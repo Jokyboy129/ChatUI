@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ChatUI – AI Chat Interface</title>
+
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --text: #e6e6e6;
+      --muted: #a0a0a0;
+      --accent: #4ea1ff;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: 50px 20px;
+      text-align: center;
+      background: linear-gradient(135deg, #1a1f2b, #0f1115);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 2.4rem;
+    }
+
+    .muted {
+      color: var(--muted);
+      margin-top: 8px;
+    }
+
+    main {
+      max-width: 1000px;
+      margin: auto;
+      padding: 20px;
+    }
+
+    .card {
+      background: var(--card);
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 18px;
+    }
+
+    h2 {
+      color: var(--accent);
+      margin-top: 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 30px 20px;
+      color: var(--muted);
+    }
+
+    .download {
+      display: inline-block;
+      margin-top: 15px;
+      background: var(--accent);
+      color: white;
+      padding: 12px 18px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .download:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+
+<header>
+  <h1>ChatUI</h1>
+  <div class="muted" id="subtitle"></div>
+</header>
+
+<main>
+
+  <div class="card">
+    <h2 id="aboutTitle"></h2>
+    <p id="aboutText"></p>
+  </div>
+
+  <div class="card">
+    <h2 id="aiTitle"></h2>
+    <ul id="aiList"></ul>
+  </div>
+
+  <div class="card">
+    <h2 id="noteTitle"></h2>
+    <p id="noteText"></p>
+  </div>
+
+  <div class="card" style="text-align:center;">
+    <h2 id="downloadTitle"></h2>
+    <a class="download" href="https://github.com/Jokyboy129/ChatUI/releases">
+      ⬇ Download ChatUI
+    </a>
+  </div>
+
+</main>
+
+<footer>
+  ChatUI • Open Source AI Interface
+</footer>
+
+<script>
+  const lang = navigator.language || navigator.userLanguage;
+  const isDE = lang.startsWith("de");
+
+  const t = isDE ? {
+    subtitle: "Open-Source Chat Interface für lokale & Cloud KI",
+    aboutTitle: "Über ChatUI",
+    aboutText: "ChatUI ist eine moderne Chat-Oberfläche für KI-Modelle. Sie unterstützt sowohl lokale als auch cloudbasierte APIs und ist vollständig OpenAI-kompatibel aufgebaut.",
+    aiTitle: "Unterstützte KI-Anbieter",
+    aiList: [
+      "OpenAI (GPT Modelle)",
+      "Ollama (lokale Modelle wie Llama, Mistral, etc.)",
+      "OpenRouter (Zugang zu vielen Modellen)",
+      "Google Gemini API"
+    ],
+    noteTitle: "Architektur",
+    noteText: "ChatUI nutzt ein flexibles API-System und kann leicht mit lokalen oder Cloud-Modellen verbunden werden.",
+    downloadTitle: "Download"
+  } : {
+    subtitle: "Open-source chat interface for local & cloud AI",
+    aboutTitle: "About ChatUI",
+    aboutText: "ChatUI is a modern chat interface for AI models. It supports both local and cloud APIs and is fully OpenAI-compatible.",
+    aiTitle: "Supported AI Providers",
+    aiList: [
+      "OpenAI (GPT models)",
+      "Ollama (local models like Llama, Mistral, etc.)",
+      "OpenRouter (access to many models)",
+      "Google Gemini API"
+    ],
+    noteTitle: "Architecture",
+    noteText: "ChatUI uses a flexible API system and can easily connect to local or cloud models.",
+    downloadTitle: "Download"
+  };
+
+  document.getElementById("subtitle").textContent = t.subtitle;
+  document.getElementById("aboutTitle").textContent = t.aboutTitle;
+  document.getElementById("aboutText").textContent = t.aboutText;
+  document.getElementById("aiTitle").textContent = t.aiTitle;
+  document.getElementById("noteTitle").textContent = t.noteTitle;
+  document.getElementById("noteText").textContent = t.noteText;
+  document.getElementById("downloadTitle").textContent = t.downloadTitle;
+
+  const list = document.getElementById("aiList");
+  t.aiList.forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    list.appendChild(li);
+  });
+</script>
+
+</body>
+</html>

@@ -13,7 +13,7 @@ ChatUI is a simple user interface for interacting with your AI models from diffe
 
 ## Installation
 
-You can get the installer from the Releases page.
+You can get the installer from the [Releases](https://github.com/jokyboy129/ChatUI/Releases) page.
 
 ## How to build
 
@@ -22,7 +22,7 @@ If you would like to build this app for yourself, follow these steps:
 1. Clone this repo using Git.
 2. Install the requirements.
 3. Make sure FFMpeg is in the folder.
-3. Build with PyInstaller or your desired method.
+4. Build with PyInstaller or your desired method.
 
 ## How to use
 
