@@ -1,0 +1,14 @@
+flask
+requests
+beautifulsoup4
+duckduckgo-search
+python-docx
+PyMuPDF
+Pillow
+pystray
+waitress
+speechrecognition
+edge-tts
+gtts
+navertts
+pyttsx3

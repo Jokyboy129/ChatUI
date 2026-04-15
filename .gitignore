@@ -1,0 +1,23 @@
+# Python virtual environment
+venv/
+.env/
+
+# PyInstaller
+dist/
+build/
+*.spec
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Sonstiges
+*.log
+ffmpeg.exe
+yt-dlp.exe
+secret.key
+user_auth.json
+users/
+uploads/
+piper_models/
+music.wav

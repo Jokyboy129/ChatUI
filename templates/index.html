@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>ChatUI</title>
+	<script src="{{ url_for('static', filename='marked.min.js') }}"></script>
+	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+	<style>
+		.settings-tabs { display: flex; border-bottom: 1px solid #dee2e6; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; }
+		.settings-tab-btn { padding: 0.5rem 1rem; cursor: pointer; border: none; background: none; border-bottom: 3px solid transparent; font-weight: bold; color: #6c757d; }
+		.settings-tab-btn:hover { color: #0d6efd; }
+		.settings-tab-btn.active { border-bottom-color: #0d6efd; color: #0d6efd; }
+		.settings-pane { display: none; }
+		.settings-pane.active { display: block; }
+	</style>
+</head>
+<body>
+
+
+<div id="voiceModeOverlay" class="voice-overlay" style="display:none;">
+	<div class="voice-container">
+		<button class="close-voice-btn" onclick="stopDictationMode()" data-i18n="closeBtn">Schließen</button>
+		<div id="voiceStateText" class="voice-state" data-i18n="voiceState">Bereit...</div>
+		<div id="voiceVisualizer" class="voice-visualizer listening"></div>
+	</div>
+</div>
+
+<header id="global-header">
+	<div>
+		<button id="sidebarToggleBtn" class="menu-btn" onclick="toggleSidebar()" aria-expanded="false" aria-controls="sidebar" data-i18n="sidebarBtn" data-i18n-aria="sidebarBtn">Sidebar anzeigen</button>
+	</div>
+	
+	<div style="display:flex; gap:1rem; align-items:center;">
+		<label for="modelSelect" data-i18n="modelLabel">Modell:</label>
+		<select id="modelSelect" style="padding: 5px;"></select>
+		<span id="status-display" aria-hidden="true" style="font-size: 0.9rem; color: #666;" data-i18n="statusReady">Bereit</span>
+	</div>
+	
+	<div style="display:flex; gap:1rem; align-items:center;">
+		<span style="font-weight:bold; color:#495057;">👤 {{ session['username'] }}</span>
+		<button class="action-btn btn-secondary" style="margin:0; width:auto; padding:0.5rem 1rem;" onclick="openSettings()" data-i18n="settingsBtn">Einstellungen</button>
+	</div>
+</header>
+
+<div id="app-container">
+	<nav id="sidebar" aria-label="Chat Verlauf" data-i18n-aria="ariaSidebar">
+		<div class="sidebar-header">
+			<h1 style="font-size: 1.2rem; margin:0; margin-bottom: 1rem;" data-i18n="chatHistory">Chatverlauf</h1>
+			<button class="action-btn btn-primary" onclick="startNewChat()" data-i18n="newChatBtn">+ Neuer Chat</button>
+		</div>
+
+		<ul class="chat-list" id="chatList" aria-label="Liste der vergangenen Chats" data-i18n-aria="ariaChatList">
+		</ul>
+	</nav>
+
+	<main id="main-content">
+		<div id="chat-log" role="log" aria-live="polite" aria-label="Chat Nachrichten" data-i18n-aria="ariaChatLog">
+			<div class="message assistant">
+				<h6>System</h6>
+				<div class="message-content"><p data-i18n="sysWelcome">Hallo! Wie kann ich dir heute helfen?</p></div>
+			</div>
+		</div>
+
+		<form id="input-form" onsubmit="event.preventDefault(); sendMessage();">
+			<label for="userInput" class="sr-only" data-i18n="ariaUserInput">Deine Nachricht</label>
+			<textarea id="userInput" placeholder="Nachricht eingeben..." required autofocus data-i18n-ph="placeholder"></textarea>
+			
+			<div class="form-actions">
+				<div class="form-actions-left">
+					<input type="file" id="fileInput" style="display:none" onchange="updateFileStatus()">
+					<button type="button" class="btn-secondary" onclick="document.getElementById('fileInput').click()" style="padding: 0.5rem 1rem; width: auto; margin: 0;" aria-label="Datei oder Bild anhängen" data-i18n="attachBtn" data-i18n-aria="ariaAttach">
+						Anhängen
+					</button>
+					
+					<button type="button" id="voiceToggleBtn" class="btn-primary" onclick="toggleDictationMode()" style="padding: 0.5rem 1rem; width: auto; margin: 0; background-color: #0dcaf0; color: #000; border-color: #0dcaf0;" aria-label="Voice-Modus starten" data-i18n="voiceBtn" data-i18n-aria="ariaVoiceStart">
+						Voice starten
+					</button>
+					
+					<button type="button" id="musicToggleBtn" class="btn-secondary" onclick="promptMusicGeneration()" style="padding: 0.5rem 1rem; width: auto; margin: 0; display:none;" aria-label="Musik generieren" data-i18n="musicBtn" data-i18n-aria="ariaMusic">
+						Musik
+					</button>
+
+					<div class="tools-menu-container">
+						<button type="button" id="toolsMenuBtn" class="btn-secondary" aria-haspopup="menu" aria-expanded="false" aria-controls="toolsMenuDropdown" onclick="toggleToolsMenu()" style="padding: 0.5rem 1rem; width: auto; margin: 0;" data-i18n="toolsBtn" data-i18n-aria="ariaTools" aria-label="Werkzeuge">
+							Tools
+						</button>
+						<ul id="toolsMenuDropdown" class="tools-dropdown" role="menu" aria-label="Tools" data-i18n-aria="ariaTools" style="display: none;">
+							<li id="menu-tool-doc_gen" role="menuitemcheckbox" aria-checked="false" tabindex="-1" data-value="doc_gen" onclick="toggleToolItem(this)" onkeydown="handleToolKeydown(event, this)">
+								<span class="menu-check" aria-hidden="true"></span> <span data-i18n="toolDocGen">Dokument erstellen</span>
+							</li>
+							<li id="menu-tool-websearch" role="menuitemcheckbox" aria-checked="false" tabindex="-1" data-value="websearch" onclick="toggleToolItem(this)" onkeydown="handleToolKeydown(event, this)">
+								<span class="menu-check" aria-hidden="true"></span> <span data-i18n="toolWeb">Websuche</span>
+							</li>
+							<li id="menu-tool-email_send" role="menuitemcheckbox" aria-checked="false" tabindex="-1" data-value="email_send" onclick="toggleToolItem(this)" onkeydown="handleToolKeydown(event, this)">
+								<span class="menu-check" aria-hidden="true"></span> <span data-i18n="toolEmailSend">E-Mail Senden</span>
+							</li>
+							<li id="menu-tool-email_read" role="menuitemcheckbox" aria-checked="false" tabindex="-1" data-value="email_read" onclick="toggleToolItem(this)" onkeydown="handleToolKeydown(event, this)">
+								<span class="menu-check" aria-hidden="true"></span> <span data-i18n="toolEmailRead">Posteingang lesen</span>
+							</li>
+							<li id="menu-tool-youtube" role="menuitemcheckbox" aria-checked="false" tabindex="-1" data-value="youtube" onclick="toggleToolItem(this)" onkeydown="handleToolKeydown(event, this)">
+								<span class="menu-check" aria-hidden="true"></span> <span data-i18n="toolYoutube">YouTube Agent</span>
+							</li>
+							<li id="menu-tool-audio" role="menuitemcheckbox" aria-checked="false" tabindex="-1" data-value="audio" onclick="toggleToolItem(this)" onkeydown="handleToolKeydown(event, this)">
+								<span class="menu-check" aria-hidden="true"></span> <span data-i18n="toolAudio">Audio/FFmpeg Agent</span>
+							</li>
+						</ul>
+					</div>
+					
+					<span id="fileName" style="font-size: 0.8em; display:none;" aria-live="polite"></span>
+				</div>
+				<button type="submit" class="btn-primary" style="padding: 0.5rem 1.5rem; width: auto; margin: 0;" aria-label="Nachricht senden" data-i18n="sendBtn" data-i18n-aria="ariaSend">Senden</button>
+			</div>
+		</form>
+	</main>
+</div>
+
+
+<div id="a11y-status" role="status" aria-live="polite"></div>
+
+<dialog id="settingsModal" style="max-width: 600px; width: 90%;">
+	<h2 id="settingsTitle" tabindex="-1" style="outline: none;" data-i18n="settingsTitle">Einstellungen</h2>
+	
+	<div class="settings-tabs">
+		<button type="button" class="settings-tab-btn active" onclick="switchSettingsTab('tab-general')" data-i18n="tabGeneral">Allgemein</button>
+		<button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-provider')" data-i18n="tabProvider">KI Provider</button>
+		<button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-agents')" data-i18n="tabAgents">Agenten</button>
+		<button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-email')" data-i18n="tabEmail">E-Mail</button>
+		<button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-tts')" data-i18n="tabTts">Sprachausgabe</button>
+	</div>
+
+	<form method="dialog">
+		
+		<div id="tab-general" class="settings-pane active">
+			<label for="appLanguageSelect" style="display:block; font-weight: bold; margin-bottom: 0.5rem;" data-i18n="langLabel">Sprache / Language:</label>
+			<select id="appLanguageSelect" style="width:100%; padding:0.5rem; margin-bottom:1rem; border-radius:4px; border:1px solid #ced4da;">
+				<option value="auto" data-i18n="langAuto">Automatisch (Browser)</option>
+				<option value="de">Deutsch</option>
+				<option value="en">English</option>
+			</select>
+			
+			<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+				<input type="checkbox" id="historyToggle" style="margin: 0; cursor: pointer;">
+				<label for="historyToggle" style="font-weight: bold; margin: 0; cursor: pointer;" data-i18n="histSave">Verlauf speichern</label>
+			</div>
+			<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding-left: 1.5rem;">
+				<label for="contextLimit" style="font-size: 0.9rem;" data-i18n="histLimit">Nachrichten im Kontext behalten (0 = alle):</label>
+				<input type="number" id="contextLimit" min="0" max="50" style="width: 60px; padding: 0.3rem; border-radius: 4px; border: 1px solid #ced4da;">
+			</div>
+
+			<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+				<input type="checkbox" id="showTokenCountToggle" style="margin: 0; cursor: pointer;">
+				<label for="showTokenCountToggle" style="font-weight: bold; margin: 0; cursor: pointer;" data-i18n="showTokens">Token-Zähler unter Nachrichten anzeigen</label>
+			</div>
+
+			<button type="button" class="btn-secondary" onclick="clearAllHistory()" style="background:#dc3545; color:white; width:100%; margin-bottom:1rem;" data-i18n="clearHistoryBtn">
+				Alle Verläufe löschen
+			</button>
+		</div>
+
+		<div id="tab-provider" class="settings-pane">
+			<label for="providerSelect" style="display:block; font-weight: bold; margin-bottom: 0.5rem;" data-i18n="providerLabel">KI-Anbieter:</label>
+			<select id="providerSelect" style="width:100%; padding:0.5rem; margin-bottom:1rem; border-radius:4px; border:1px solid #ced4da;" onchange="toggleProviderFields()">
+				<option value="ollama">Ollama (Lokal)</option>
+				<option value="gemini">Google Gemini (Cloud)</option>
+				<option value="openrouter">OpenRouter (Cloud)</option>
+				<option value="openai">OpenAI (Cloud)</option>
+			</select>
+			
+			<div id="geminiKeyContainer" style="display:none; margin-bottom:1rem;">
+				<label for="geminiApiKey" style="display:block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Gemini API-Schlüssel:</label>
+				<input type="password" id="geminiApiKey" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;" placeholder="AIzaSy...">
+			</div>
+			
+			<div id="openrouterKeyContainer" style="display:none; margin-bottom:1rem;">
+				<label for="openrouterApiKey" style="display:block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">OpenRouter API-Schlüssel:</label>
+				<input type="password" id="openrouterApiKey" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;" placeholder="sk-or-v1-...">
+				<div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+					<input type="checkbox" id="openrouterFreeToggle" style="margin: 0; cursor: pointer;">
+					<label for="openrouterFreeToggle" style="font-size: 0.9rem; margin: 0; cursor: pointer;" data-i18n="orFreeOnly">Nur kostenlose Modelle laden (Free)</label>
+				</div>
+				<div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+					<input type="checkbox" id="openrouterCustomSearchToggle" style="margin: 0; cursor: pointer;">
+					<label for="openrouterCustomSearchToggle" style="font-size: 0.9rem; margin: 0; cursor: pointer;" data-i18n="orCustomSearch">Eigene Websuche statt OpenRouter-Suche nutzen</label>
+				</div>
+			</div>
+
+			<div id="openaiKeyContainer" style="display:none; margin-bottom:1rem;">
+				<label for="openaiApiKey" style="display:block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">OpenAI API-Schlüssel:</label>
+				<input type="password" id="openaiApiKey" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;" placeholder="sk-...">
+			</div>
+
+			<label for="defaultModelSelect" style="display:block; font-weight: bold; margin-bottom: 0.5rem;" data-i18n="defModel">Standardmodell für diesen Anbieter:</label>
+			<select id="defaultModelSelect" style="width:100%; padding:0.5rem; margin-bottom:1rem; border-radius:4px; border:1px solid #ced4da;" onchange="updateSavedDefault()"></select>
+			
+			<label for="sysPrompt" style="display:block; font-weight: bold; margin-bottom: 0.5rem;">System Prompt:</label>
+			<textarea id="sysPrompt" style="width:100%; height:100px; margin-bottom:1rem;"></textarea>
+		</div>
+
+		<div id="tab-agents" class="settings-pane">
+			<label style="display:block; font-weight: bold; margin-bottom: 0.5rem;" data-i18n="agentSettings">Agenten Einstellungen</label>
+			<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+				<input type="checkbox" id="webSearchToggle" onchange="toggleWebSearchModeVisibility()" style="margin: 0; cursor: pointer;">
+				<label for="webSearchToggle" style="font-weight: bold; margin: 0; cursor: pointer;" data-i18n="webSearchEnable">Websuche erlauben</label>
+			</div>
+			<div id="webSearchModeContainer" style="display:none; padding-left: 1.5rem; margin-bottom: 1rem;">
+				<div style="margin-bottom: 0.5rem;">
+					<label for="searxngUrl" style="font-size: 0.9rem;">SearXNG Instanz URL:</label>
+					<input type="text" id="searxngUrl" style="width: 100%; padding: 0.3rem; border-radius: 4px; border: 1px solid #ced4da;" placeholder="http://localhost:8085">
+				</div>
+				<div style="margin-bottom: 0.5rem;">
+					<label for="webSearchModeSelect" style="font-size: 0.9rem;" data-i18n="webSearchMode">Suchmodus:</label>
+					<select id="webSearchModeSelect" style="padding: 0.3rem; margin-left: 0.5rem; border-radius: 4px;">
+						<option value="auto" data-i18n="modeAuto">Automatisch</option>
+						<option value="manual" data-i18n="modeManual">Manuell</option>
+					</select>
+				</div>
+				<div>
+					<label for="webSearchMaxResults" style="font-size: 0.9rem;" data-i18n="webSearchPages">Ergebnisse laden (Seiten):</label>
+					<input type="number" id="webSearchMaxResults" min="1" max="5" style="width: 50px; padding: 0.3rem; margin-left: 0.5rem; border-radius: 4px; border: 1px solid #ced4da;">
+				</div>
+			</div>
+
+			<hr style="margin: 1rem 0; border: 0; border-top: 1px solid #dee2e6;">
+
+			<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+				<input type="checkbox" id="toolDocGenToggle" style="margin: 0; cursor: pointer;">
+				<label for="toolDocGenToggle" style="margin: 0; cursor: pointer;" data-i18n="toolDocGenEnable">Dokument-Generator aktivieren</label>
+			</div>
+			<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+				<input type="checkbox" id="toolEmailSendToggle" style="margin: 0; cursor: pointer;">
+				<label for="toolEmailSendToggle" style="margin: 0; cursor: pointer;" data-i18n="toolEmailSendEnable">E-Mail-Versand aktivieren</label>
+			</div>
+			<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+				<input type="checkbox" id="toolEmailReadToggle" style="margin: 0; cursor: pointer;">
+				<label for="toolEmailReadToggle" style="margin: 0; cursor: pointer;" data-i18n="toolEmailReadEnable">Posteingang-Leser aktivieren</label>
+			</div>
+			<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+				<input type="checkbox" id="toolYoutubeToggle" style="margin: 0; cursor: pointer;">
+				<label for="toolYoutubeToggle" style="margin: 0; cursor: pointer;" data-i18n="toolYoutubeEnable">YouTube Agent aktivieren</label>
+			</div>
+			<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+				<input type="checkbox" id="toolAudioToggle" style="margin: 0; cursor: pointer;">
+				<label for="toolAudioToggle" style="margin: 0; cursor: pointer;" data-i18n="toolAudioEnable">Audio/FFmpeg Agent aktivieren</label>
+			</div>
+		</div>
+
+		<div id="tab-email" class="settings-pane">
+			<div id="emailAccountsContainer"></div>
+			<button type="button" class="btn-secondary" onclick="addEmailAccountUI()" style="margin-top:0.5rem; margin-bottom:1rem; font-size:0.8rem; padding:0.3rem 0.8rem;" data-i18n="mailAddBtn">+ Konto hinzufügen</button>
+		</div>
+
+		<div id="tab-tts" class="settings-pane">
+			<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+				<input type="checkbox" id="ttsToggle" onchange="toggleTtsFields()" style="margin: 0; cursor: pointer;">
+				<label for="ttsToggle" style="font-weight: bold; margin: 0; cursor: pointer;" data-i18n="ttsEnable">Text-to-Speech aktivieren</label>
+			</div>
+			
+			<div id="ttsSettingsContainer" style="display:none; padding-left: 1.5rem; margin-bottom: 1rem;">
+				<label for="ttsProviderSelect" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;" data-i18n="ttsProvider">TTS-Anbieter:</label>
+				<select id="ttsProviderSelect" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border-radius:4px; border:1px solid #ced4da;" onchange="toggleTtsProviderFields()">
+					<option value="sapi5" data-i18n="ttsSapi">Server SAPI5 (PC Systemstimmen)</option>
+					<option value="pyttsx3">pyttsx3 (Lokal & Offline)</option>
+					<option value="piper">Piper TTS (Lokal & Offline)</option>
+					<option value="edge">Edge-TTS (Azure Stimmen, leichtgewichtig)</option>
+					<option value="espeak">eSpeak NG (Retro & Maschinell)</option>
+					<option value="elevenlabs">ElevenLabs (Cloud, Voice Cloning)</option>
+					<option value="googlecloud">Google Cloud TTS (Premium)</option>
+					<option value="openai">OpenAI (Cloud)</option>
+					<option value="naver">NaverTTS / Papago (Cloud, Kostenlos)</option>
+				</select>
+				
+				<div id="elevenlabsKeyContainer" style="display:none; margin-bottom:0.5rem;">
+					<label for="elevenlabsApiKey" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;">ElevenLabs API-Schlüssel:</label>
+					<input type="password" id="elevenlabsApiKey" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;" placeholder="sk_...">
+					<button type="button" class="btn-secondary" style="margin-top:0.5rem; padding:0.3rem 0.8rem; font-size:0.8rem;" onclick="loadElevenLabsVoices()" data-i18n="ttsElevenLoad">ElevenLabs Stimmen laden</button>
+				</div>
+				
+				<div id="googleCloudSettingsContainer" style="display:none; margin-bottom:0.5rem;">
+					<label for="googleCloudApiKey" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;">Google Cloud API-Schlüssel:</label>
+					<input type="password" id="googleCloudApiKey" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;" placeholder="AIza...">
+					<button type="button" class="btn-secondary" style="margin-top:0.5rem; margin-bottom:0.5rem; padding:0.3rem 0.8rem; font-size:0.8rem;" onclick="loadGoogleCloudVoices()">Google Stimmen laden</button>
+
+					<div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+						<div style="flex:1;">
+							<label for="googleCloudLangSelect" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;">Sprache:</label>
+							<select id="googleCloudLangSelect" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;" onchange="updateGoogleCloudVoiceUI()"></select>
+						</div>
+						<div style="flex:1;">
+							<label for="googleCloudVoiceSelect" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;">Stimme:</label>
+							<select id="googleCloudVoiceSelect" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;"></select>
+						</div>
+					</div>
+				</div>
+
+				<div id="openaiTtsSettingsContainer" style="display:none; margin-bottom:0.5rem;">
+					<label for="openaiTtsModelSelect" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;">OpenAI TTS Modell:</label>
+					<select id="openaiTtsModelSelect" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border-radius:4px; border:1px solid #ced4da;">
+						<option value="tts-1">tts-1 (Schnell)</option>
+						<option value="tts-1-hd">tts-1-hd (Hohe Qualität)</option>
+						<option value="gpt-4o-mini-tts">gpt-4o-mini-tts (Neu & Ausdrucksstark)</option>
+					</select>
+				</div>
+
+				<div id="piperSettingsContainer" style="display:none; margin-bottom:0.5rem;">
+					<label for="piperVoiceSelect" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;" data-i18n="ttsPiperVoice">Piper Stimme:</label>
+					<div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+						<select id="piperVoiceSelect" style="flex:1; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;" onchange="updatePiperVoiceUI()"></select>
+						<button type="button" id="piperDownloadBtn" class="btn-primary" style="display:none; margin:0; padding:0 1rem; font-size:0.8rem;" onclick="downloadPiperVoice()" data-i18n="ttsPiperDl">Herunterladen</button>
+					</div>
+					<div id="piperDownloadStatus" style="font-size:0.8rem; color:#666; margin-bottom:0.5rem; display:none;"></div>
+
+					<div id="piperSpeakerContainer" style="display:none;">
+						<label for="piperSpeakerSelect" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;" data-i18n="ttsPiperSpeaker">Sprecher:</label>
+						<select id="piperSpeakerSelect" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border-radius:4px; border:1px solid #ced4da;"></select>
+					</div>
+				</div>
+
+				<div id="espeakSettingsContainer" style="display:none; margin-bottom:0.5rem;">
+					<div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+						<div style="flex:1;">
+							<label for="espeakVoiceSelect" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;">Sprache:</label>
+							<select id="espeakVoiceSelect" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;"></select>
+						</div>
+						<div style="flex:1;">
+							<label for="espeakVariantSelect" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;">Stimme/Variante:</label>
+							<select id="espeakVariantSelect" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;"></select>
+						</div>
+					</div>
+				</div>
+
+				<div id="defaultVoiceContainer">
+					<label for="ttsVoiceSelect" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;" data-i18n="ttsVoice">Stimme:</label>
+					<select id="ttsVoiceSelect" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border-radius:4px; border:1px solid #ced4da;"></select>
+				</div>
+				
+				<div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; margin-bottom: 0.5rem;">
+					<input type="checkbox" id="ttsDownloadToggle" style="margin: 0; cursor: pointer;">
+					<label for="ttsDownloadToggle" style="font-size: 0.9rem; margin: 0; cursor: pointer;" data-i18n="ttsDlEnable">TTS Audio-Downloads erlauben</label>
+				</div>
+				
+				<button type="button" id="previewTtsBtn" class="btn-secondary" style="padding:0.3rem 0.8rem; font-size:0.8rem;" onclick="previewTTS()" data-i18n="ttsPreview">Beispiel vorhören</button>
+			</div>
+			
+			<div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; border-top: 1px solid #dee2e6; padding-top: 1rem;">
+				<input type="checkbox" id="elevenlabsMusicToggle" style="margin: 0; cursor: pointer;">
+				<label for="elevenlabsMusicToggle" style="font-weight: bold; margin: 0; cursor: pointer;" data-i18n="musicEnable">Musik-/Soundgenerierung (ElevenLabs) in Chat-Leiste anzeigen</label>
+			</div>
+		</div>
+
+		<div style="display:flex; justify-content: space-between; gap: 1rem; align-items: center; margin-top: 1rem; border-top: 1px solid #dee2e6; padding-top: 1rem;">
+			<a href="{{ url_for('logout') }}" class="btn-secondary" style="background:#6c757d; color:white; text-decoration:none; padding: 0.5rem 1rem; border-radius: 4px; text-align:center;" data-i18n="logoutBtn">Abmelden</a>
+			<div style="display:flex; gap: 1rem;">
+				<button type="button" onclick="document.getElementById('settingsModal').close()" data-i18n="cancelBtn">Abbrechen</button>
+				<button type="button" class="btn-primary" onclick="saveSettings()" data-i18n="saveBtn">Speichern</button>
+			</div>
+		</div>
+	</form>
+</dialog>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>

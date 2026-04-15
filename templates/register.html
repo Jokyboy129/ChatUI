@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>ChatUI - Registrieren</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+	<div class="login-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: var(--bg-color);">
+		<div class="login-box" style="background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center;">
+			<h1 style="margin-top: 0; margin-bottom: 1.5rem; color: #333;" data-i18n="createAcc">Konto erstellen</h1>
+			
+			{% if error %}
+			<div style="color: #dc3545; background-color: #f8d7da; padding: 0.8rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #f5c6cb;">
+				{{ error }}
+			</div>
+			{% endif %}
+
+			<form method="POST" action="{{ url_for('register') }}" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">
+				<input type="text" name="username" data-i18n-ph="newUser" data-i18n-aria="newUser" placeholder="Neuer Benutzername" aria-label="Neuer Benutzername" required autofocus style="width: 100%; box-sizing: border-box; padding: 0.8rem; border: 1px solid #ced4da; border-radius: 4px;">
+				<input type="password" name="password" data-i18n-ph="newPass" data-i18n-aria="newPass" placeholder="Neues Passwort" aria-label="Neues Passwort" required style="width: 100%; box-sizing: border-box; padding: 0.8rem; border: 1px solid #ced4da; border-radius: 4px;">
+				<button type="submit" class="action-btn btn-primary" style="width: 100%;" data-i18n="createBtn">Konto anlegen</button>
+			</form>
+
+			<hr style="border: 0; border-top: 1px solid #eee; margin-bottom: 2rem;">
+			<a href="{{ url_for('login') }}" class="action-btn btn-secondary" style="width: 100%; text-align: center; text-decoration: none; display: inline-block; box-sizing: border-box;" data-i18n="backLink">Zurück zum Login</a>
+		</div>
+	</div>
+	
+	<script>
+		const langs = {
+			de: { createAcc: "Konto erstellen", newUser: "Neuer Benutzername", newPass: "Neues Passwort", createBtn: "Konto anlegen", backLink: "Zurück zum Login" },
+			en: { createAcc: "Create Account", newUser: "New username", newPass: "New password", createBtn: "Create account", backLink: "Back to Login" }
+		};
+		const l = navigator.language.startsWith('de') ? 'de' : 'en';
+		document.querySelectorAll('[data-i18n]').forEach(e => {
+			if (langs[l][e.dataset.i18n]) e.textContent = langs[l][e.dataset.i18n];
+		});
+		document.querySelectorAll('[data-i18n-ph]').forEach(e => {
+			if (langs[l][e.dataset.i18nPh]) e.placeholder = langs[l][e.dataset.i18nPh];
+		});
+		document.querySelectorAll('[data-i18n-aria]').forEach(e => {
+			if (langs[l][e.dataset.i18nAria]) e.setAttribute('aria-label', langs[l][e.dataset.i18nAria]);
+		});
+	</script>
+</body>
+</html>
