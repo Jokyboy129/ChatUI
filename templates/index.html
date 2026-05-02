@@ -358,7 +358,11 @@
 	</form>
 </dialog>
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<!-- Hier wurden die separaten Skripte eingebunden -->
+<script src="{{ url_for('static', filename='i18n.js') }}"></script>
+<script src="{{ url_for('static', filename='audio.js') }}"></script>
+<script src="{{ url_for('static', filename='settings.js') }}"></script>
+<script src="{{ url_for('static', filename='main.js') }}"></script>
 
 </body>
 </html>
