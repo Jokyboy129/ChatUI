@@ -437,6 +437,27 @@ def create_mistral_voice():
 	except Exception as e:
 		return jsonify({"error": str(e)}), 500
 
+@tts_bp.route("/tts/mistral/voices/delete", methods=['POST'])
+def delete_mistral_voice():
+	username = session['username']
+	user_settings = apply_admin_policy(username, load_settings(username))
+	data = request.json
+	api_key = data.get("api_key", user_settings.get("mistral_api_key"))
+	voice_id = data.get("voice_id")
+	
+	if not api_key or not voice_id:
+		return jsonify({"error": "No API Key or Voice ID"}), 400
+	
+	try:
+		headers = {"Authorization": f"Bearer {api_key}"}
+		r = requests.delete(f"https://api.mistral.ai/v1/audio/voices/{voice_id}", headers=headers)
+		r.raise_for_status()
+		return jsonify({"status": "deleted"})
+	except requests.exceptions.HTTPError as e:
+		return jsonify({"error": f"Mistral API error: {e.response.text}"}), e.response.status_code
+	except Exception as e:
+		return jsonify({"error": str(e)}), 500
+
 def process_mistral(data):
 	text = data.get("text", "")
 	voice_id = data.get("voice_id", "")
@@ -892,4 +913,4 @@ def process_edge(data):
 	except Exception as e:
 		if os.path.exists(temp_audio):
 			os.remove(temp_audio)
-		return jsonify({"error": str(e)}), 50
+		return jsonify({"error": str(e)}), 500

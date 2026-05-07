@@ -646,9 +646,15 @@ async function loadMistralVoices() {
 		if (voices.error) {
 			select.innerHTML = `<option value="">${t('msgModelErr')}</option>`;
 			alert(voices.error);
+			document.getElementById('mistralDeleteVoiceBtn').style.display = 'none';
 			return;
 		}
 		select.innerHTML = '';
+		if (voices.length > 0) {
+			document.getElementById('mistralDeleteVoiceBtn').style.display = 'inline-block';
+		} else {
+			document.getElementById('mistralDeleteVoiceBtn').style.display = 'none';
+		}
 		voices.forEach(voice => {
 			const option = document.createElement('option');
 			option.value = voice.id;
@@ -661,6 +667,7 @@ async function loadMistralVoices() {
 		}
 	} catch(e) {
 		select.innerHTML = `<option value="">${t('msgNetErr')}</option>`;
+		document.getElementById('mistralDeleteVoiceBtn').style.display = 'none';
 	}
 }
 
@@ -672,10 +679,15 @@ async function createMistralVoice() {
 	const sampleInput = document.getElementById('mistralVoiceSample');
 	const consent = document.getElementById('mistralVoiceConsent').checked;
 	const status = document.getElementById('mistralVoiceCreateStatus');
-	const sample = sampleInput.files[0];
+	const sample = sampleInput.files ? sampleInput.files[0] : null;
 
-	if ((!apiKey && !globalSettings.mistral_api_key_available) || !name || !sample || !consent) {
+	if (!apiKey && !globalSettings.mistral_api_key_available) {
 		alert(t('msgPlsKey'));
+		return;
+	}
+
+	if (!name || !sample || !consent) {
+		alert(t('msgMissInput'));
 		return;
 	}
 
@@ -706,6 +718,39 @@ async function createMistralVoice() {
 		if (data.id) document.getElementById('ttsVoiceSelect').value = data.id;
 	} catch(e) {
 		status.textContent = t('msgNetErr');
+	}
+}
+
+async function deleteMistralVoice() {
+	const apiKey = document.getElementById('mistralApiKey').value;
+	const voiceSelect = document.getElementById('ttsVoiceSelect');
+	const voiceId = voiceSelect.value;
+	
+	if (!apiKey && !globalSettings.mistral_api_key_available) {
+		alert(t('msgPlsKey'));
+		return;
+	}
+	if (!voiceId) return;
+
+	if (!confirm(t('msgDelVoiceConf'))) return;
+
+	try {
+		const res = await fetch('/tts/mistral/voices/delete', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ api_key: apiKey, voice_id: voiceId })
+		});
+		if (res.redirected) { window.location.href = res.url; return; }
+		const data = await res.json();
+		if (!res.ok || data.error) {
+			alert(`${t('Error')}: ${data.error || res.status}`);
+			return;
+		}
+		alert(t('msgVoiceDeleted'));
+		if (globalSettings.mistral_voice === voiceId) globalSettings.mistral_voice = '';
+		await loadMistralVoices();
+	} catch(e) {
+		alert(t('msgNetErr'));
 	}
 }
 
