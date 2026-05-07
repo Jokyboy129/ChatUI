@@ -1,5 +1,7 @@
 let piperVoicesData = [];
 let googleCloudVoicesData = [];
+let emailAccountsDraft = [];
+let defaultEmailDraftIndex = 0;
 
 function switchSettingsTab(tabId) {
 	document.querySelectorAll('.settings-pane').forEach(p => p.classList.remove('active'));
@@ -113,19 +115,19 @@ function toggleTtsProviderFields() {
 		defaultVoiceContainer.style.display = 'block';
 		const select = document.getElementById('ttsVoiceSelect');
 		select.innerHTML = `
-			<option value="alloy">Alloy (Neutral)</option>
-			<option value="ash">Ash (Klar & Präzise)</option>
-			<option value="ballad">Ballad (Ausdrucksstark/Erzählend)</option>
-			<option value="cedar">Cedar (Warm & Geerdet)</option>
-			<option value="coral">Coral (Warm & Freundlich)</option>
-			<option value="echo">Echo (Klar, Männlich)</option>
-			<option value="fable">Fable (Warm, Ausdrucksstark)</option>
-			<option value="marin">Marin (Klar & Natürlich)</option>
-			<option value="nova">Nova (Energetisch, Weiblich)</option>
-			<option value="onyx">Onyx (Tief, Autorität)</option>
-			<option value="sage">Sage (Ruhig & Bedacht)</option>
-			<option value="shimmer">Shimmer (Weich & Hell)</option>
-			<option value="verse">Verse (Vielseitig & Ausdrucksstark)</option>
+			<option value="alloy">${t('Alloy (Neutral)')}</option>
+			<option value="ash">${t('Ash (Clear & Precise)')}</option>
+			<option value="ballad">${t('Ballad (Expressive/Narrative)')}</option>
+			<option value="cedar">${t('Cedar (Warm & Grounded)')}</option>
+			<option value="coral">${t('Coral (Warm & Friendly)')}</option>
+			<option value="echo">${t('Echo (Clear, Masculine)')}</option>
+			<option value="fable">${t('Fable (Warm, Expressive)')}</option>
+			<option value="marin">${t('Marin (Clear & Natural)')}</option>
+			<option value="nova">${t('Nova (Energetic, Feminine)')}</option>
+			<option value="onyx">${t('Onyx (Deep, Authority)')}</option>
+			<option value="sage">${t('Sage (Calm & Thoughtful)')}</option>
+			<option value="shimmer">${t('Shimmer (Soft & Bright)')}</option>
+			<option value="verse">${t('Verse (Versatile & Expressive)')}</option>
 		`;
 		if (globalSettings.openai_voice) {
 			select.value = globalSettings.openai_voice;
@@ -142,15 +144,15 @@ function toggleTtsProviderFields() {
 		defaultVoiceContainer.style.display = 'block';
 		const select = document.getElementById('ttsVoiceSelect');
 		select.innerHTML = `
-			<option value="de">Deutsch</option>
-			<option value="en">Englisch</option>
-			<option value="fr">Französisch</option>
-			<option value="es">Spanisch</option>
-			<option value="it">Italienisch</option>
-			<option value="ko">Koreanisch</option>
-			<option value="ja">Japanisch</option>
-			<option value="zh-CN">Chinesisch (Vereinfacht)</option>
-			<option value="ru">Russisch</option>
+			<option value="de">${t('German')}</option>
+			<option value="en">${t('English')}</option>
+			<option value="fr">${t('French')}</option>
+			<option value="es">${t('Spanish')}</option>
+			<option value="it">${t('Italian')}</option>
+			<option value="ko">${t('Korean')}</option>
+			<option value="ja">${t('Japanese')}</option>
+			<option value="zh-CN">${t('Chinese (Simplified)')}</option>
+			<option value="ru">${t('Russian')}</option>
 		`;
 		if (globalSettings.gtts_voice) {
 			select.value = globalSettings.gtts_voice;
@@ -159,10 +161,10 @@ function toggleTtsProviderFields() {
 		defaultVoiceContainer.style.display = 'block';
 		const select = document.getElementById('ttsVoiceSelect');
 		select.innerHTML = `
-			<option value="en">Englisch (en)</option>
-			<option value="ko">Koreanisch (ko)</option>
-			<option value="ja">Japanisch (ja)</option>
-			<option value="es">Spanisch (es)</option>
+			<option value="en">${t('English (en)')}</option>
+			<option value="ko">${t('Korean (ko)')}</option>
+			<option value="ja">${t('Japanese (ja)')}</option>
+			<option value="es">${t('Spanish (es)')}</option>
 		`;
 		if (globalSettings.navertts_voice) {
 			select.value = globalSettings.navertts_voice;
@@ -179,46 +181,91 @@ function updateSavedDefault() {
 }
 
 function addEmailAccountUI(acc = null, isDefault = false) {
-	const container = document.getElementById('emailAccountsContainer');
-	const div = document.createElement('div');
-	div.className = 'email-account-block';
-	div.style.cssText = 'border:1px solid #ced4da; padding:0.8rem; border-radius:4px; margin-bottom:0.8rem; position:relative;';
-	
-	const defaultAcc = acc || {name: '', smtp_server: '', smtp_port: 587, imap_server: '', imap_port: 993, smtp_user: '', smtp_password: '', smtp_sender: ''};
-	
-	const langStr = getLang() === 'de' ? 'Als Standardkonto festlegen' : 'Set as default account';
-	
-	div.innerHTML = `
-		<button type="button" onclick="this.parentElement.remove()" style="position:absolute; top:5px; right:5px; background:#dc3545; color:white; border:none; border-radius:3px; cursor:pointer;">X</button>
-		
-		<div style="margin-bottom:0.8rem; padding-bottom:0.5rem; border-bottom:1px solid #eee;">
-			<input type="radio" name="default_email" value="new" class="default-email-radio" style="margin:0; cursor:pointer;" ${isDefault ? 'checked' : ''}>
-			<label style="font-weight:bold; cursor:pointer;" onclick="this.previousElementSibling.click()">${langStr}</label>
-		</div>
-
-		<label style="font-size:0.9rem; font-weight:bold;">Anzeigename (z.B. Arbeit):</label>
-		<input type="text" class="mail-name" value="${defaultAcc.name}" style="width:100%; margin-bottom:0.5rem; padding:0.3rem;">
-		
-		<div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.5rem;">
-			<div><label style="font-size:0.9rem;">SMTP-Server:</label><input type="text" class="mail-smtp-server" value="${defaultAcc.smtp_server}" style="width:100%; padding:0.3rem;"></div>
-			<div><label style="font-size:0.9rem;">SMTP-Port:</label><input type="number" class="mail-smtp-port" value="${defaultAcc.smtp_port}" style="width:100%; padding:0.3rem;"></div>
-			<div><label style="font-size:0.9rem;">IMAP-Server:</label><input type="text" class="mail-imap-server" value="${defaultAcc.imap_server}" style="width:100%; padding:0.3rem;"></div>
-			<div><label style="font-size:0.9rem;">IMAP-Port:</label><input type="number" class="mail-imap-port" value="${defaultAcc.imap_port}" style="width:100%; padding:0.3rem;"></div>
-		</div>
-		<label style="font-size:0.9rem;">Benutzername:</label>
-		<input type="text" class="mail-user" value="${defaultAcc.smtp_user}" style="width:100%; margin-bottom:0.5rem; padding:0.3rem;">
-		
-		<label style="font-size:0.9rem;">Passwort:</label>
-		<input type="password" class="mail-pass" value="${defaultAcc.smtp_password}" style="width:100%; margin-bottom:0.5rem; padding:0.3rem;">
-		
-		<label style="font-size:0.9rem;">Absender-E-Mail:</label>
-		<input type="text" class="mail-sender" value="${defaultAcc.smtp_sender}" style="width:100%; padding:0.3rem;">
-	`;
-	container.appendChild(div);
-	
-	if (!document.querySelector('input[name="default_email"]:checked')) {
-		div.querySelector('.default-email-radio').checked = true;
+	if (acc) {
+		emailAccountsDraft.push(acc);
+		if (isDefault) defaultEmailDraftIndex = emailAccountsDraft.length - 1;
+		renderEmailAccounts();
+		return;
 	}
+	openEmailAccountDialog(-1);
+}
+
+function renderEmailAccounts() {
+	const container = document.getElementById('emailAccountsContainer');
+	const summary = document.getElementById('emailAccountSummary');
+	container.innerHTML = '';
+	summary.textContent = emailAccountsDraft.length ? `${emailAccountsDraft.length} ${t('account(s) configured.')}` : t('No e-mail accounts configured.');
+	emailAccountsDraft.forEach((acc, idx) => {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'btn-secondary';
+		btn.style.cssText = 'display:block; width:100%; text-align:left; margin-bottom:0.5rem; padding:0.6rem;';
+		const name = acc.name || acc.smtp_user || `${t('Account')} ${idx + 1}`;
+		btn.textContent = `${idx === defaultEmailDraftIndex ? `[${t('Default')}] ` : ''}${name}`;
+		btn.setAttribute('aria-label', `${t('Edit e-mail account')} ${name}`);
+		btn.onclick = () => openEmailAccountDialog(idx);
+		container.appendChild(btn);
+	});
+}
+
+function escapeHtml(text) {
+	const div = document.createElement('div');
+	div.textContent = text || '';
+	return div.innerHTML;
+}
+
+function openEmailAccountDialog(index) {
+	const dialog = document.getElementById('emailAccountDialog');
+	const acc = index >= 0 ? emailAccountsDraft[index] : {name: '', smtp_server: '', smtp_port: 587, imap_server: '', imap_port: 993, smtp_user: '', smtp_password: '', smtp_sender: ''};
+	document.getElementById('emailAccountIndex').value = String(index);
+	document.getElementById('emailAccountDialogTitle').textContent = index >= 0 ? t('Edit e-mail account') : t('Add e-mail account');
+	document.getElementById('emailAccountName').value = acc.name || '';
+	document.getElementById('emailSmtpServer').value = acc.smtp_server || '';
+	document.getElementById('emailSmtpPort').value = acc.smtp_port || 587;
+	document.getElementById('emailImapServer').value = acc.imap_server || '';
+	document.getElementById('emailImapPort').value = acc.imap_port || 993;
+	document.getElementById('emailUser').value = acc.smtp_user || '';
+	document.getElementById('emailPass').value = acc.smtp_password || '';
+	document.getElementById('emailSender').value = acc.smtp_sender || '';
+	document.getElementById('emailDefaultAccount').checked = index === defaultEmailDraftIndex || emailAccountsDraft.length === 0;
+	dialog.showModal();
+	document.getElementById('emailAccountDialogTitle').focus();
+}
+
+function saveEmailAccountDialog() {
+	const index = parseInt(document.getElementById('emailAccountIndex').value);
+	const acc = {
+		name: document.getElementById('emailAccountName').value,
+		smtp_server: document.getElementById('emailSmtpServer').value,
+		smtp_port: parseInt(document.getElementById('emailSmtpPort').value) || 587,
+		imap_server: document.getElementById('emailImapServer').value,
+		imap_port: parseInt(document.getElementById('emailImapPort').value) || 993,
+		smtp_user: document.getElementById('emailUser').value,
+		smtp_password: document.getElementById('emailPass').value,
+		smtp_sender: document.getElementById('emailSender').value
+	};
+	let targetIndex = index;
+	if (index >= 0) {
+		emailAccountsDraft[index] = acc;
+	} else {
+		emailAccountsDraft.push(acc);
+		targetIndex = emailAccountsDraft.length - 1;
+	}
+	if (document.getElementById('emailDefaultAccount').checked) {
+		defaultEmailDraftIndex = targetIndex;
+	}
+	document.getElementById('emailAccountDialog').close();
+	renderEmailAccounts();
+}
+
+function deleteEmailAccountFromDialog() {
+	const index = parseInt(document.getElementById('emailAccountIndex').value);
+	if (index >= 0) {
+		emailAccountsDraft.splice(index, 1);
+		if (defaultEmailDraftIndex >= emailAccountsDraft.length) defaultEmailDraftIndex = Math.max(0, emailAccountsDraft.length - 1);
+	}
+	document.getElementById('emailAccountDialog').close();
+	renderEmailAccounts();
 }
 
 async function updateSettingsModelList() {
@@ -291,6 +338,24 @@ async function loadSettings() {
 	document.getElementById('toolEmailReadToggle').checked = data.tool_email_read_enabled !== false;
 	document.getElementById('toolYoutubeToggle').checked = data.tool_youtube_enabled !== false;
 	document.getElementById('toolAudioToggle').checked = data.tool_audio_enabled !== false;
+	const lockedAgents = data.locked_agents || {};
+	['toolDocGenToggle', 'toolEmailSendToggle', 'toolEmailReadToggle', 'toolYoutubeToggle', 'toolAudioToggle', 'webSearchToggle'].forEach(id => {
+		const el = document.getElementById(id);
+		if (el) el.disabled = false;
+	});
+	const lockMap = {
+		tool_doc_gen_enabled: 'toolDocGenToggle',
+		tool_email_send_enabled: 'toolEmailSendToggle',
+		tool_email_read_enabled: 'toolEmailReadToggle',
+		tool_youtube_enabled: 'toolYoutubeToggle',
+		tool_audio_enabled: 'toolAudioToggle',
+		web_search_enabled: 'webSearchToggle'
+	};
+	Object.keys(lockedAgents).forEach(key => {
+		const el = document.getElementById(lockMap[key]);
+		if (el) el.disabled = true;
+	});
+	document.getElementById('sysPrompt').disabled = data.system_prompt_locked || false;
 	
 	document.getElementById('menu-tool-doc_gen').style.display = data.tool_doc_gen_enabled !== false ? 'block' : 'none';
 	document.getElementById('menu-tool-email_send').style.display = data.tool_email_send_enabled !== false ? 'block' : 'none';
@@ -344,11 +409,103 @@ async function loadSettings() {
 
 	const emailContainer = document.getElementById('emailAccountsContainer');
 	if (emailContainer) {
-		emailContainer.innerHTML = '';
-		const defIndex = data.default_email_account || 0;
-		if (data.email_accounts && data.email_accounts.length > 0) {
-			data.email_accounts.forEach((acc, idx) => addEmailAccountUI(acc, idx === defIndex));
+		emailAccountsDraft = Array.isArray(data.email_accounts) ? data.email_accounts.slice() : [];
+		defaultEmailDraftIndex = data.default_email_account || 0;
+		renderEmailAccounts();
+	}
+
+	const adminTabBtn = document.getElementById('adminTabBtn');
+	if (adminTabBtn) {
+		adminTabBtn.style.display = data.is_admin ? 'inline-block' : 'none';
+		if (data.is_admin) loadAdminUsers();
+	}
+}
+
+async function loadAdminUsers() {
+	const container = document.getElementById('adminUsersContainer');
+	if (!container) return;
+	container.innerHTML = `<p>${t('Loading users...')}</p>`;
+	try {
+		const res = await fetch('/admin/users');
+		if (!res.ok) {
+			container.innerHTML = `<p>${t('Admin settings unavailable.')}</p>`;
+			return;
 		}
+		const data = await res.json();
+		container.innerHTML = '';
+		data.users.forEach(user => {
+			if (user.is_admin) return;
+			const policy = user.policy || {};
+			const shared = new Set(policy.shared_api_keys || []);
+			const locked = policy.locked_agents || {};
+			const block = document.createElement('div');
+			block.className = 'admin-user-block';
+			block.dataset.username = user.username;
+			block.style.cssText = 'border:1px solid #ced4da; border-radius:4px; padding:0.8rem; margin-bottom:0.8rem;';
+			block.innerHTML = `
+				<h3 style="margin-top:0; font-size:1rem;">${escapeHtml(user.username)}</h3>
+				<label style="display:block; font-weight:bold; margin-bottom:0.4rem;">${t('Shared API keys')}</label>
+				${data.api_key_fields.map(key => `
+					<label style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.3rem;">
+						<input type="checkbox" class="admin-shared-key" value="${key}" ${shared.has(key) ? 'checked' : ''}>
+						${key}
+					</label>
+				`).join('')}
+				<label style="display:block; font-weight:bold; margin-top:0.7rem; margin-bottom:0.4rem;">${t('Locked agents')}</label>
+				${data.lockable_agent_fields.map(key => `
+					<label style="display:block; margin-bottom:0.3rem;">
+						${key}
+						<select class="admin-lock-agent" data-key="${key}" style="width:100%; padding:0.3rem;">
+							<option value="" ${Object.prototype.hasOwnProperty.call(locked, key) ? '' : 'selected'}>${t('User choice')}</option>
+							<option value="true" ${locked[key] === true ? 'selected' : ''}>${t('Force enabled')}</option>
+							<option value="false" ${locked[key] === false ? 'selected' : ''}>${t('Force disabled')}</option>
+						</select>
+					</label>
+				`).join('')}
+				<label style="display:flex; align-items:center; gap:0.4rem; margin-top:0.7rem; margin-bottom:0.4rem;">
+					<input type="checkbox" class="admin-lock-prompt" ${policy.lock_system_prompt ? 'checked' : ''}>
+					${t('Lock system prompt')}
+				</label>
+				<textarea class="admin-system-prompt" style="width:100%; height:80px; margin-bottom:0.5rem;">${escapeHtml(policy.system_prompt || '')}</textarea>
+				<button type="button" class="btn-primary" onclick="saveAdminUserPolicy(this)">${t('Save user policy')}</button>
+			`;
+			container.appendChild(block);
+		});
+		if (!container.innerHTML) {
+			container.innerHTML = `<p>${t('No regular users yet.')}</p>`;
+		}
+	} catch(e) {
+		container.innerHTML = `<p>${t('Admin settings unavailable.')}</p>`;
+	}
+}
+
+async function saveAdminUserPolicy(btn) {
+	const block = btn.closest('.admin-user-block');
+	const username = block.dataset.username;
+	const shared_api_keys = Array.from(block.querySelectorAll('.admin-shared-key:checked')).map(el => el.value);
+	const locked_agents = {};
+	block.querySelectorAll('.admin-lock-agent').forEach(el => {
+		if (el.value !== '') locked_agents[el.dataset.key] = el.value === 'true';
+	});
+	const payload = {
+		shared_api_keys,
+		locked_agents,
+		lock_system_prompt: block.querySelector('.admin-lock-prompt').checked,
+		system_prompt: block.querySelector('.admin-system-prompt').value
+	};
+	btn.disabled = true;
+	btn.textContent = t('Saving...');
+	try {
+		const res = await fetch(`/admin/users/${encodeURIComponent(username)}/policy`, {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify(payload)
+		});
+		btn.textContent = res.ok ? t('Saved') : t('Error');
+		setTimeout(() => { btn.textContent = t('Save user policy'); btn.disabled = false; }, 1200);
+	} catch(e) {
+		btn.textContent = t('Error');
+		setTimeout(() => { btn.textContent = t('Save user policy'); btn.disabled = false; }, 1200);
 	}
 }
 
@@ -435,7 +592,7 @@ async function loadEdgeVoices() {
 
 async function loadElevenLabsVoices() {
 	const apiKey = document.getElementById('elevenlabsApiKey').value;
-	if (!apiKey) {
+	if (!apiKey && !globalSettings.elevenlabs_api_key_available) {
 		alert(t('msgPlsKey'));
 		return;
 	}
@@ -472,7 +629,7 @@ async function loadElevenLabsVoices() {
 
 async function loadMistralVoices() {
 	const apiKey = document.getElementById('mistralApiKey').value;
-	if (!apiKey) {
+	if (!apiKey && !globalSettings.mistral_api_key_available) {
 		alert(t('msgPlsKey'));
 		return;
 	}
@@ -517,13 +674,13 @@ async function createMistralVoice() {
 	const status = document.getElementById('mistralVoiceCreateStatus');
 	const sample = sampleInput.files[0];
 
-	if (!apiKey || !name || !sample || !consent) {
+	if ((!apiKey && !globalSettings.mistral_api_key_available) || !name || !sample || !consent) {
 		alert(t('msgPlsKey'));
 		return;
 	}
 
 	status.style.display = 'block';
-	status.textContent = 'Creating voice...';
+	status.textContent = t('Creating voice...');
 
 	const formData = new FormData();
 	formData.append('api_key', apiKey);
@@ -540,10 +697,10 @@ async function createMistralVoice() {
 		if (res.redirected) { window.location.href = res.url; return; }
 		const data = await res.json();
 		if (!res.ok || data.error) {
-			status.textContent = 'Error: ' + (data.error || res.status);
+			status.textContent = `${t('Error')}: ${data.error || res.status}`;
 			return;
 		}
-		status.textContent = 'Voice created.';
+		status.textContent = t('Voice created.');
 		globalSettings.mistral_voice = data.id || '';
 		await loadMistralVoices();
 		if (data.id) document.getElementById('ttsVoiceSelect').value = data.id;
@@ -554,7 +711,7 @@ async function createMistralVoice() {
 
 async function loadGoogleCloudVoices() {
 	const apiKey = document.getElementById('googleCloudApiKey').value;
-	if (!apiKey) {
+	if (!apiKey && !globalSettings.googlecloud_api_key_available) {
 		alert(t('msgPlsKey'));
 		return;
 	}
@@ -569,7 +726,7 @@ async function loadGoogleCloudVoices() {
 		if (res.redirected) { window.location.href = res.url; return; }
 		const voices = await res.json();
 		if (voices.error) {
-			langSelect.innerHTML = `<option value="">Error loading</option>`;
+			langSelect.innerHTML = `<option value="">${t('msgModelErr')}</option>`;
 			alert(voices.error);
 			return;
 		}
@@ -598,7 +755,7 @@ async function loadGoogleCloudVoices() {
 
 		updateGoogleCloudVoiceUI();
 	} catch(e) {
-		langSelect.innerHTML = `<option value="">Error</option>`;
+		langSelect.innerHTML = `<option value="">${t('msgNetErr')}</option>`;
 	}
 }
 
@@ -667,7 +824,7 @@ async function loadEspeakData() {
 		}
 		
 	} catch (e) {
-		langSelect.innerHTML = `<option value="">Error fetching data</option>`;
+		langSelect.innerHTML = `<option value="">${t('msgNetErr')}</option>`;
 	}
 }
 
@@ -764,7 +921,7 @@ async function downloadPiperVoice() {
 		const data = await res.json();
 		
 		if (!res.ok) {
-			status.textContent = 'Error: ' + (data.error || 'Unknown');
+			status.textContent = t('Error') + ': ' + (data.error || 'Unknown');
 		} else {
 			status.textContent = t('msgDlSuccess');
 			await loadPiperVoices(); 
@@ -820,26 +977,8 @@ async function saveSettings() {
 	const mistralTtsModelSelect = document.getElementById('mistralTtsModelSelect');
 	const mistralTtsModel = mistralTtsModelSelect ? mistralTtsModelSelect.value : 'voxtral-mini-tts-2603';
 	
-	const emailAccounts = [];
-	let defaultEmailIndex = 0;
-	
-	const blocks = document.querySelectorAll('.email-account-block');
-	blocks.forEach((block, index) => {
-		emailAccounts.push({
-			name: block.querySelector('.mail-name').value,
-			smtp_server: block.querySelector('.mail-smtp-server').value,
-			smtp_port: parseInt(block.querySelector('.mail-smtp-port').value) || 587,
-			imap_server: block.querySelector('.mail-imap-server').value,
-			imap_port: parseInt(block.querySelector('.mail-imap-port').value) || 993,
-			smtp_user: block.querySelector('.mail-user').value,
-			smtp_password: block.querySelector('.mail-pass').value,
-			smtp_sender: block.querySelector('.mail-sender').value
-		});
-		
-		if (block.querySelector('.default-email-radio').checked) {
-			defaultEmailIndex = index;
-		}
-	});
+	const emailAccounts = emailAccountsDraft;
+	let defaultEmailIndex = defaultEmailDraftIndex;
 	
 	savedDefaults[provider] = document.getElementById('defaultModelSelect').value;
 	
@@ -907,5 +1046,16 @@ async function saveSettings() {
 			appLanguage = language;
 			applyTranslations();
 		}
-	} catch(e) { alert("Error saving settings."); }
+	} catch(e) { alert(t('Error saving settings.')); }
 }
+
+document.addEventListener('keydown', function(e) {
+	if (e.key !== 'ArrowDown') return;
+	const dialog = document.getElementById('emailAccountDialog');
+	if (!dialog || !dialog.open || !e.target.matches('[data-email-field]')) return;
+	e.preventDefault();
+	const fields = Array.from(dialog.querySelectorAll('[data-email-field]'));
+	const idx = fields.indexOf(e.target);
+	const next = fields[idx + 1];
+	if (next) next.focus();
+});

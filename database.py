@@ -173,6 +173,14 @@ def generate_chat_title(username, chat_id, first_message, model):
 			r.raise_for_status()
 			j = r.json()
 			title = j.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+		elif settings.get("ai_provider") == "mistral" and settings.get("mistral_api_key"):
+			url = "https://api.mistral.ai/v1/chat/completions"
+			headers = {"Authorization": f"Bearer {settings['mistral_api_key']}", "Content-Type": "application/json"}
+			payload = {"model": model, "messages": [{"role": "user", "content": prompt}], "stream": False}
+			r = requests.post(url, json=payload, headers=headers)
+			r.raise_for_status()
+			j = r.json()
+			title = j.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
 		else:
 			payload = {"model": model, "prompt": prompt, "stream": False}
 			r = requests.post(f"{OLLAMA_URL}/api/generate", json=payload)

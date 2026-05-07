@@ -76,7 +76,7 @@ try:
 	if os.name == 'nt':
 		import pystray._win32
 		
-	from config import load_settings, save_settings, get_db_path, APP_DIR, DATA_DIR, PIPER_DIR, OLLAMA_URL, PORT, UPLOADS_DIR, load_users, save_users, hash_password, get_secret_key
+	from config import load_settings, save_settings, public_settings_for_user, apply_admin_policy, load_admin_policy, save_admin_policy, is_admin, API_KEY_FIELDS, LOCKABLE_AGENT_FIELDS, get_db_path, APP_DIR, DATA_DIR, PIPER_DIR, OLLAMA_URL, PORT, UPLOADS_DIR, load_users, save_users, hash_password, get_secret_key
 	from database import init_db, get_chat_history, save_message_to_db, generate_chat_title, save_doc_chunk, search_doc_chunks
 	from web_search import get_search_query, perform_web_search
 	import email_agent
@@ -132,7 +132,7 @@ def get_text_chunks(text, chunk_size=2000, overlap=400):
 # --- HELPER FÜR SPRACHE ---
 def is_lang_de():
 	if 'username' in session:
-		user_settings = load_settings(session['username'])
+		user_settings = public_settings_for_user(session['username'])
 		lang = user_settings.get("language", "auto")
 		if lang != "auto":
 			return lang == "de"
@@ -230,7 +230,7 @@ def serve_media(filename):
 
 @app.route("/models")
 def models():
-	user_settings = load_settings(session['username'])
+	user_settings = apply_admin_policy(session['username'], load_settings(session['username']))
 	prov = request.args.get('provider', user_settings.get("ai_provider"))
 	if prov == "gemini":
 		if not user_settings.get("gemini_api_key"):
@@ -367,6 +367,9 @@ def settings():
 	if request.method == 'POST':
 		data = request.json
 		user_settings = load_settings(username)
+		user_policy = {} if is_admin(username) else load_admin_policy().get("users", {}).get(username, {})
+		locked_agents = user_policy.get("locked_agents", {})
+		system_prompt_locked = user_policy.get("lock_system_prompt", False)
 		
 		allowed_keys = [
 			"show_token_count", "openrouter_use_custom_search", 
@@ -378,6 +381,12 @@ def settings():
 		]
 		
 		for key, value in data.items():
+			if key in API_KEY_FIELDS and user_policy.get("shared_api_keys") and key in user_policy.get("shared_api_keys", []) and not value:
+				continue
+			if key in LOCKABLE_AGENT_FIELDS and key in locked_agents:
+				continue
+			if key == "system_prompt" and system_prompt_locked:
+				continue
 			if key in user_settings or key in allowed_keys:
 				if key in ["web_search_max_results", "history_context_limit"]:
 					try:
@@ -399,7 +408,59 @@ def settings():
 		save_settings(username, user_settings)
 		return jsonify({"status": "ok"})
 	else:
-		return jsonify(load_settings(username))
+		return jsonify(public_settings_for_user(username))
+
+@app.route("/admin/users", methods=['GET'])
+def admin_users():
+	username = session['username']
+	if not is_admin(username):
+		return jsonify({"error": "Forbidden"}), 403
+	users = load_users()
+	policy = load_admin_policy()
+	result = []
+	for name in users.keys():
+		result.append({
+			"username": name,
+			"is_admin": name == policy.get("admin"),
+			"policy": policy.get("users", {}).get(name, {})
+		})
+	return jsonify({
+		"admin": policy.get("admin"),
+		"users": result,
+		"api_key_fields": API_KEY_FIELDS,
+		"lockable_agent_fields": LOCKABLE_AGENT_FIELDS
+	})
+
+@app.route("/admin/users/<target_username>/policy", methods=['POST'])
+def admin_update_user_policy(target_username):
+	username = session['username']
+	if not is_admin(username):
+		return jsonify({"error": "Forbidden"}), 403
+	users = load_users()
+	if target_username not in users:
+		return jsonify({"error": "User not found"}), 404
+	if target_username == username:
+		return jsonify({"error": "Cannot restrict the admin account"}), 400
+
+	data = request.json or {}
+	policy = load_admin_policy()
+	user_policy = policy.setdefault("users", {}).setdefault(target_username, {})
+
+	shared_api_keys = data.get("shared_api_keys", [])
+	user_policy["shared_api_keys"] = [key for key in shared_api_keys if key in API_KEY_FIELDS]
+
+	locked_agents = data.get("locked_agents", {})
+	user_policy["locked_agents"] = {
+		key: bool(value)
+		for key, value in locked_agents.items()
+		if key in LOCKABLE_AGENT_FIELDS
+	}
+
+	user_policy["lock_system_prompt"] = bool(data.get("lock_system_prompt", False))
+	user_policy["system_prompt"] = data.get("system_prompt", "")
+
+	save_admin_policy(policy)
+	return jsonify({"status": "ok", "policy": user_policy})
 
 @app.route("/transcribe", methods=['POST'])
 def transcribe_audio():
@@ -485,7 +546,7 @@ def api_send_email():
 @app.route("/send", methods=['POST'])
 def send_message():
 	username = session['username']
-	user_settings = load_settings(username)
+	user_settings = apply_admin_policy(username, load_settings(username))
 	de = is_lang_de()
 	
 	

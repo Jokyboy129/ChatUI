@@ -14,7 +14,7 @@ from flask import Blueprint, request, Response, jsonify, session, current_app
 import edge_tts
 from gtts import gTTS
 
-from config import load_settings, PIPER_DIR
+from config import load_settings, apply_admin_policy, PIPER_DIR
 
 tts_bp = Blueprint('tts_bp', __name__)
 
@@ -24,7 +24,7 @@ PIPER_DATA_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/v1.0.0/"
 
 def is_lang_de_local():
 	if 'username' in session:
-		user_settings = load_settings(session['username'])
+		user_settings = apply_admin_policy(session['username'], load_settings(session['username']))
 		lang = user_settings.get("language", "auto")
 		if lang != "auto":
 			return lang == "de"
@@ -58,6 +58,17 @@ def stream_tts(req_id):
 		return "Stream not found or expired", 404
 		
 	data = entry["data"]
+	if 'username' in session:
+		user_settings = apply_admin_policy(session['username'], load_settings(session['username']))
+		provider_key_map = {
+			"openai": "openai_api_key",
+			"mistral": "mistral_api_key",
+			"elevenlabs": "elevenlabs_api_key",
+			"googlecloud": "googlecloud_api_key"
+		}
+		key_name = provider_key_map.get(data.get("provider", ""))
+		if key_name and not data.get("api_key"):
+			data["api_key"] = user_settings.get(key_name, "")
 	provider = data.get("provider", "")
 	
 	if provider == "sapi5": return process_sapi5(data)
@@ -374,7 +385,7 @@ def process_openai(data):
 @tts_bp.route("/tts/mistral/voices", methods=['POST'])
 def get_mistral_voices():
 	username = session['username']
-	user_settings = load_settings(username)
+	user_settings = apply_admin_policy(username, load_settings(username))
 	data = request.json
 	api_key = data.get("api_key", user_settings.get("mistral_api_key"))
 	if not api_key:
@@ -392,7 +403,7 @@ def get_mistral_voices():
 @tts_bp.route("/tts/mistral/voices/create", methods=['POST'])
 def create_mistral_voice():
 	username = session['username']
-	user_settings = load_settings(username)
+	user_settings = apply_admin_policy(username, load_settings(username))
 	api_key = request.form.get("api_key", user_settings.get("mistral_api_key", ""))
 	name = request.form.get("name", "").strip()
 	languages_raw = request.form.get("languages", "")
@@ -600,7 +611,7 @@ def process_espeak(data):
 @tts_bp.route("/tts/elevenlabs/voices", methods=['POST'])
 def get_elevenlabs_voices():
 	username = session['username']
-	user_settings = load_settings(username)
+	user_settings = apply_admin_policy(username, load_settings(username))
 	data = request.json
 	api_key = data.get("api_key", user_settings.get("elevenlabs_api_key"))
 	if not api_key:
@@ -652,7 +663,7 @@ def process_elevenlabs(data):
 @tts_bp.route("/music/elevenlabs/generate", methods=['POST'])
 def generate_elevenlabs_music():
 	username = session['username']
-	user_settings = load_settings(username)
+	user_settings = apply_admin_policy(username, load_settings(username))
 	data = request.json
 	prompt = data.get("prompt", "")
 	duration_ms = data.get("duration_ms", 15000)

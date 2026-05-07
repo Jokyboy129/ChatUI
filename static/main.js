@@ -39,12 +39,12 @@ function toggleSidebar() {
 	
 	if (sidebar.style.display === '' || sidebar.style.display === 'none') {
 		sidebar.style.display = 'flex';
-		toggleBtn.textContent = getLang() === 'de' ? 'Sidebar ausblenden' : 'Hide Sidebar';
+		toggleBtn.textContent = t('Hide Sidebar');
 		toggleBtn.setAttribute('aria-expanded', 'true');
 		announce(t('msgSidebarShow'));
 	} else {
 		sidebar.style.display = 'none';
-		toggleBtn.textContent = getLang() === 'de' ? 'Sidebar anzeigen' : 'Show Sidebar';
+		toggleBtn.textContent = t('Show Sidebar');
 		toggleBtn.setAttribute('aria-expanded', 'false');
 		announce(t('msgSidebarHide'));
 	}
@@ -193,16 +193,16 @@ async function loadModels() {
 function parseContent(text) {
 	if (!text) return "";
 	
-	let t = text;
+	let tString = text;
 	
-	t = t.replace(/<(think|thinking)[^>]*>/gi, '\n\n:::THINK_START:::\n\n');
-	t = t.replace(/<\/(think|thinking)>/gi, '\n\n:::THINK_END:::\n\n');
+	tString = tString.replace(/<(think|thinking)[^>]*>/gi, '\n\n:::THINK_START:::\n\n');
+	tString = tString.replace(/<\/(think|thinking)>/gi, '\n\n:::THINK_END:::\n\n');
 	
-	t = t.replace(/\[SAVE_DOC\][\s\S]*?\[\/SAVE_DOC\]/gi, '\n\n*[Dokument generiert]*\n\n');
+	tString = tString.replace(/\[SAVE_DOC\][\s\S]*?\[\/SAVE_DOC\]/gi, `\n\n*[${t('Document generated')}]*\n\n`);
 	
-	let html = marked.parse(t);
+	let html = marked.parse(tString);
 	
-	html = html.replace(/(<p>)?:::THINK_START:::(<\/p>)?/g, '<details class="think-box" style="margin-bottom: 1rem; padding: 0.8rem; border: 1px solid #ced4da; border-radius: 5px; background: #f8f9fa;"><summary style="cursor: pointer; font-weight: bold; color: #495057;">Thinking Process</summary><div style="margin-top: 0.8rem; font-size: 0.9em; color: #6c757d; border-top: 1px solid #e9ecef; padding-top: 0.5rem;">');
+	html = html.replace(/(<p>)?:::THINK_START:::(<\/p>)?/g, `<details class="think-box" style="margin-bottom: 1rem; padding: 0.8rem; border: 1px solid #ced4da; border-radius: 5px; background: #f8f9fa;"><summary style="cursor: pointer; font-weight: bold; color: #495057;">${t('Thinking Process')}</summary><div style="margin-top: 0.8rem; font-size: 0.9em; color: #6c757d; border-top: 1px solid #e9ecef; padding-top: 0.5rem;">`);
 	html = html.replace(/(<p>)?:::THINK_END:::(<\/p>)?/g, '</div></details>');
 	
 	const openTags = (html.match(/<details/g) || []).length;
@@ -306,17 +306,17 @@ async function submitEmailDraft(btn, chatId) {
 		if (res.redirected) { window.location.href = res.url; return; }
 		const data = await res.json();
 		if(data.success) {
-			container.innerHTML = `<p style="color:green; font-weight:bold;">Success: ${data.message}</p>`;
+			container.innerHTML = `<p style="color:green; font-weight:bold;">${t('Success')}: ${data.message}</p>`;
 		} else {
-			container.innerHTML += `<p style="color:red; font-weight:bold;">Error: ${data.message}</p>`;
+			container.innerHTML += `<p style="color:red; font-weight:bold;">${t('Error')}: ${data.message}</p>`;
 			btn.disabled = false;
-			btn.textContent = "Retry";
+			btn.textContent = t('Retry');
 		}
 		
 		setTimeout(() => loadChat(chatId), 500);
 	} catch(e) {
 		btn.disabled = false;
-		btn.textContent = "Retry";
+		btn.textContent = t('Retry');
 		alert(t('msgSendErr'));
 	}
 }
@@ -344,7 +344,7 @@ async function sendMessage(isVoice = false) {
 	fileInput.value = ''; 
 	document.getElementById('fileName').style.display = 'none';
 
-	const userMsgElement = appendMessage('user', msg + (file ? ` [File: ${file.name}]` : ''), null, true, currentModel);
+	const userMsgElement = appendMessage('user', msg + (file ? ` [${t('File')}: ${file.name}]` : ''), null, true, currentModel);
 	
 	const statusDisplay = document.getElementById('status-display');
 	
@@ -459,8 +459,8 @@ async function sendMessage(isVoice = false) {
 		}
 
 	} catch (e) {
-		botContentDiv.innerHTML = "Connection Error.";
-		statusDisplay.textContent = "Error";
+		botContentDiv.innerHTML = t('Connection Error.');
+		statusDisplay.textContent = t('Error');
 		announce(t('msgTransErr'));
 	}
 }
@@ -474,7 +474,7 @@ function appendMessage(role, text, images, isNew, modelName = 'AI', usage = null
 	
 	let headerHtml = '';
 	if (role === 'user') {
-		headerHtml = '<h5>You</h5>';
+		headerHtml = `<h5>${t('You')}</h5>`;
 	} else {
 		headerHtml = `<h6>${modelName}</h6>`;
 	}
@@ -513,7 +513,7 @@ function updateFileStatus() {
 	const f = document.getElementById('fileInput').files[0];
 	const span = document.getElementById('fileName');
 	if(f) {
-		span.textContent = t('msgFileSel') + " " + f.name;
+		span.textContent = `${t('msgFileSel')} ${f.name}`;
 		span.style.display = 'inline';
 		announce(`${t('msgFileNotSel')} ${f.name}`);
 	} else {

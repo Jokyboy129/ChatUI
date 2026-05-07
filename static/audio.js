@@ -127,7 +127,7 @@ async function prefetchNextTts(provider, isPreview) {
 		body.voice_id = isPreview ? document.getElementById('ttsVoiceSelect').value : globalSettings.openai_voice;
 		body.model_id = isPreview ? document.getElementById('openaiTtsModelSelect').value : globalSettings.openai_tts_model;
 		body.api_key = isPreview ? (document.getElementById('openaiApiKey') ? document.getElementById('openaiApiKey').value : '') : globalSettings.openai_api_key;
-		if (!body.api_key || !body.voice_id) {
+		if (!body.api_key && !globalSettings.openai_api_key_available || !body.voice_id) {
 			stopTTS();
 			alert("Bitte OpenAI API Key eingeben");
 			return;
@@ -136,7 +136,7 @@ async function prefetchNextTts(provider, isPreview) {
 		body.voice_id = isPreview ? document.getElementById('ttsVoiceSelect').value : globalSettings.mistral_voice;
 		body.model_id = isPreview ? document.getElementById('mistralTtsModelSelect').value : globalSettings.mistral_tts_model;
 		body.api_key = isPreview ? (document.getElementById('mistralApiKey') ? document.getElementById('mistralApiKey').value : '') : globalSettings.mistral_api_key;
-		if (!body.api_key || !body.voice_id) {
+		if ((!body.api_key && !globalSettings.mistral_api_key_available) || !body.voice_id) {
 			stopTTS();
 			alert(t('msgPlsKey'));
 			return;
@@ -147,7 +147,7 @@ async function prefetchNextTts(provider, isPreview) {
 	} else if (provider === 'elevenlabs') {
 		body.voice_id = isPreview ? document.getElementById('ttsVoiceSelect').value : globalSettings.elevenlabs_voice;
 		body.api_key = isPreview ? document.getElementById('elevenlabsApiKey').value : globalSettings.elevenlabs_api_key;
-		if (!body.api_key || !body.voice_id) {
+		if ((!body.api_key && !globalSettings.elevenlabs_api_key_available) || !body.voice_id) {
 			stopTTS();
 			alert(t('msgPlsKey'));
 			return;
@@ -157,7 +157,7 @@ async function prefetchNextTts(provider, isPreview) {
 		body.language_code = isPreview ? document.getElementById('googleCloudLangSelect').value : globalSettings.googlecloud_language;
 		body.voice_id = isPreview ? document.getElementById('googleCloudVoiceSelect').value : globalSettings.googlecloud_voice;
 
-		if (!body.api_key || !body.voice_id) {
+		if ((!body.api_key && !globalSettings.googlecloud_api_key_available) || !body.voice_id) {
 			stopTTS();
 			alert("Bitte Google Cloud API Key eingeben");
 			return;

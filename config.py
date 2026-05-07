@@ -15,6 +15,7 @@ USERS_DIR = os.path.join(DATA_DIR, "users")
 PIPER_DIR = os.path.join(DATA_DIR, "piper_models")
 UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
 USERS_AUTH_FILE = os.path.join(DATA_DIR, "users_auth.json")
+ADMIN_POLICY_FILE = os.path.join(DATA_DIR, "admin_policy.json")
 SECRET_KEY_FILE = os.path.join(DATA_DIR, "secret.key")
 
 os.makedirs(USERS_DIR, exist_ok=True)
@@ -76,6 +77,24 @@ DEFAULT_SETTINGS = {
 	"show_token_count": True
 }
 
+API_KEY_FIELDS = [
+	"gemini_api_key",
+	"openrouter_api_key",
+	"openai_api_key",
+	"mistral_api_key",
+	"elevenlabs_api_key",
+	"googlecloud_api_key"
+]
+
+LOCKABLE_AGENT_FIELDS = [
+	"tool_doc_gen_enabled",
+	"tool_email_send_enabled",
+	"tool_email_read_enabled",
+	"tool_youtube_enabled",
+	"tool_audio_enabled",
+	"web_search_enabled"
+]
+
 def get_secret_key():
 	if os.path.exists(SECRET_KEY_FILE):
 		try:
@@ -120,6 +139,81 @@ def save_users(users):
 			json.dump(users, f, ensure_ascii=False, indent="\t")
 	except Exception as e:
 		pass
+
+def get_admin_username():
+	users = load_users()
+	return next(iter(users), None)
+
+def load_admin_policy():
+	admin_username = get_admin_username()
+	default_policy = {"admin": admin_username, "users": {}}
+	if os.path.exists(ADMIN_POLICY_FILE):
+		try:
+			with open(ADMIN_POLICY_FILE, "r", encoding="utf-8") as f:
+				policy = json.load(f)
+			if not policy.get("admin"):
+				policy["admin"] = admin_username
+			if "users" not in policy or not isinstance(policy["users"], dict):
+				policy["users"] = {}
+			return policy
+		except Exception:
+			return default_policy
+	return default_policy
+
+def save_admin_policy(policy):
+	if not policy.get("admin"):
+		policy["admin"] = get_admin_username()
+	if "users" not in policy or not isinstance(policy["users"], dict):
+		policy["users"] = {}
+	try:
+		with open(ADMIN_POLICY_FILE, "w", encoding="utf-8") as f:
+			json.dump(policy, f, ensure_ascii=False, indent="\t")
+	except Exception:
+		pass
+
+def is_admin(username):
+	return username and username == load_admin_policy().get("admin")
+
+def get_user_policy(username):
+	policy = load_admin_policy()
+	return policy.get("users", {}).get(username, {})
+
+def apply_admin_policy(username, settings):
+	if is_admin(username):
+		settings["is_admin"] = True
+		return settings
+
+	policy = get_user_policy(username)
+	admin_name = load_admin_policy().get("admin")
+	admin_settings = load_settings(admin_name) if admin_name and admin_name != username else DEFAULT_SETTINGS.copy()
+
+	for key in policy.get("shared_api_keys", []):
+		if key in API_KEY_FIELDS and admin_settings.get(key):
+			settings[key] = admin_settings.get(key)
+			settings[f"{key}_inherited"] = True
+
+	locked_agents = policy.get("locked_agents", {})
+	for key, value in locked_agents.items():
+		if key in LOCKABLE_AGENT_FIELDS:
+			settings[key] = bool(value)
+
+	if policy.get("lock_system_prompt"):
+		settings["system_prompt"] = policy.get("system_prompt", settings.get("system_prompt", ""))
+		settings["system_prompt_locked"] = True
+
+	settings["is_admin"] = False
+	settings["locked_agents"] = locked_agents
+	settings["shared_api_keys"] = policy.get("shared_api_keys", [])
+	return settings
+
+def public_settings_for_user(username):
+	settings = apply_admin_policy(username, load_settings(username))
+	if not is_admin(username):
+		for key in API_KEY_FIELDS:
+			if settings.get(f"{key}_inherited"):
+				settings[key] = ""
+				settings[f"{key}_available"] = True
+	return settings
 
 def hash_password(password):
 	return hashlib.sha256(password.encode('utf-8')).hexdigest()
