@@ -386,6 +386,131 @@ def generate_openai(kwargs):
 	except Exception as e:
 		yield json.dumps({"content": f"\n\n**System Error:** {str(e)}"}) + "\n"
 
+def generate_mistral(kwargs):
+	username = kwargs['username']
+	chat_id = kwargs['chat_id']
+	model = kwargs['model']
+	current_messages = kwargs['current_messages']
+	user_settings = kwargs['user_settings']
+	de = kwargs['de']
+	search_query = kwargs['search_query']
+	relevant_chunks = kwargs['relevant_chunks']
+	audio_instruction = kwargs['audio_instruction']
+	youtube_instruction = kwargs['youtube_instruction']
+	email_agent_output = kwargs['email_agent_output']
+	doc_writer_instruction = kwargs['doc_writer_instruction']
+	process_ffmpeg = kwargs['process_ffmpeg']
+	process_yt = kwargs['process_yt']
+	process_doc = kwargs['process_doc']
+
+	full_response = ""
+	usage_dict = None
+	try:
+		url = "https://api.mistral.ai/v1/chat/completions"
+		headers = {
+			"Authorization": f"Bearer {user_settings.get('mistral_api_key', '')}",
+			"Content-Type": "application/json"
+		}
+
+		api_messages = []
+		for msg in current_messages:
+			clean_content = msg["content"]
+			if '<details class="search-sources">' in clean_content:
+				clean_content = re.sub(r'<details class="search-sources">.*?<summary>[^<]*</summary>\s*', '\n\n--- DOCUMENT / WEB INFO ---\n', clean_content, flags=re.DOTALL)
+				clean_content = clean_content.replace('</details>', '\n--- END INFO ---\n')
+
+			if msg.get("images"):
+				content_parts = [{"type": "text", "text": clean_content}]
+				for b64 in msg["images"]:
+					content_parts.append({
+						"type": "image_url",
+						"image_url": f"data:image/jpeg;base64,{b64}"
+					})
+				api_messages.append({"role": msg["role"], "content": content_parts})
+			else:
+				api_messages.append({"role": msg["role"], "content": clean_content})
+
+		if relevant_chunks or audio_instruction or youtube_instruction or email_agent_output or doc_writer_instruction:
+			hidden_prompt = ""
+			if relevant_chunks or email_agent_output:
+				hidden_prompt += "\n\n[SYSTEM INSTRUCTION: Answer the request using the provided INFO blocks. DO NOT output or repeat the raw info blocks in your response. Respond in the same language as the user.]"
+			if audio_instruction:
+				hidden_prompt += audio_instruction
+			if youtube_instruction:
+				hidden_prompt += youtube_instruction
+			if email_agent_output:
+				hidden_prompt += email_agent_output
+			if doc_writer_instruction:
+				hidden_prompt += doc_writer_instruction
+
+			if isinstance(api_messages[-1]["content"], list):
+				api_messages[-1]["content"][0]["text"] += hidden_prompt
+			else:
+				api_messages[-1]["content"] += hidden_prompt
+
+		payload = {
+			"model": model,
+			"messages": api_messages,
+			"stream": True
+		}
+
+		r = requests.post(url, headers=headers, json=payload, stream=True)
+		r.raise_for_status()
+
+		yield json.dumps({"chat_id": chat_id, "title": get_chat_title(username, chat_id, de)}) + "\n"
+
+		for line in r.iter_lines():
+			if line.startswith(b"data: "):
+				data_str = line.decode('utf-8')[6:]
+				if data_str.strip() == "[DONE]" or data_str.strip() == "":
+					continue
+				try:
+					j = json.loads(data_str)
+					if "choices" in j and len(j["choices"]) > 0:
+						delta = j["choices"][0].get("delta", {})
+						content_delta = delta.get("content", "")
+						if isinstance(content_delta, list):
+							content_delta = "".join(part.get("text", "") for part in content_delta if isinstance(part, dict))
+						if content_delta:
+							full_response += content_delta
+							yield json.dumps({"content": content_delta}) + "\n"
+
+					if "usage" in j and j["usage"]:
+						usage_data = j["usage"]
+						usage_dict = {
+							"prompt": usage_data.get("prompt_tokens", 0),
+							"completion": usage_data.get("completion_tokens", 0),
+							"total": usage_data.get("total_tokens", 0)
+						}
+						yield json.dumps({"usage": usage_dict}) + "\n"
+				except Exception:
+					continue
+
+		ffmpeg_results = process_ffmpeg(full_response, de)
+		if ffmpeg_results:
+			full_response += ffmpeg_results
+			yield json.dumps({"content": ffmpeg_results}) + "\n"
+
+		yt_results = process_yt(full_response, de)
+		if yt_results:
+			full_response += yt_results
+			yield json.dumps({"content": yt_results}) + "\n"
+
+		doc_results = process_doc(full_response, de)
+		if doc_results:
+			full_response += doc_results
+			yield json.dumps({"content": doc_results}) + "\n"
+
+		save_message_to_db(username, chat_id, "assistant", full_response, usage=usage_dict)
+
+	except requests.exceptions.HTTPError as e:
+		err_msg = str(e)
+		if e.response is not None:
+			err_msg += f" - Server response: {e.response.text}"
+		yield json.dumps({"content": f"\n\n**API Error:** {err_msg}"}) + "\n"
+	except Exception as e:
+		yield json.dumps({"content": f"\n\n**System Error:** {str(e)}"}) + "\n"
+
 def generate_openrouter(kwargs):
 	username = kwargs['username']
 	chat_id = kwargs['chat_id']

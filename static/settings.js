@@ -32,10 +32,12 @@ function toggleProviderFields() {
 	const geminiContainer = document.getElementById('geminiKeyContainer');
 	const openrouterContainer = document.getElementById('openrouterKeyContainer');
 	const openaiContainer = document.getElementById('openaiKeyContainer');
+	const mistralContainer = document.getElementById('mistralKeyContainer');
 	
 	geminiContainer.style.display = 'none';
 	openrouterContainer.style.display = 'none';
 	if(openaiContainer) openaiContainer.style.display = 'none';
+	if(mistralContainer) mistralContainer.style.display = 'none';
 	
 	if (provider === 'gemini') {
 		geminiContainer.style.display = 'block';
@@ -43,6 +45,8 @@ function toggleProviderFields() {
 		openrouterContainer.style.display = 'block';
 	} else if (provider === 'openai' && openaiContainer) {
 		openaiContainer.style.display = 'block';
+	} else if (provider === 'mistral' && mistralContainer) {
+		mistralContainer.style.display = 'block';
 	}
 	
 	updateSettingsModelList();
@@ -64,6 +68,7 @@ function toggleTtsProviderFields() {
 	const elevenlabsKeyContainer = document.getElementById('elevenlabsKeyContainer');
 	const googleCloudSettingsContainer = document.getElementById('googleCloudSettingsContainer');
 	const openaiTtsContainer = document.getElementById('openaiTtsSettingsContainer');
+	const mistralTtsContainer = document.getElementById('mistralTtsSettingsContainer');
 	const piperSettingsContainer = document.getElementById('piperSettingsContainer');
 	const espeakSettingsContainer = document.getElementById('espeakSettingsContainer');
 	const defaultVoiceContainer = document.getElementById('defaultVoiceContainer');
@@ -72,6 +77,7 @@ function toggleTtsProviderFields() {
 	elevenlabsKeyContainer.style.display = 'none';
 	if(googleCloudSettingsContainer) googleCloudSettingsContainer.style.display = 'none';
 	if(openaiTtsContainer) openaiTtsContainer.style.display = 'none';
+	if(mistralTtsContainer) mistralTtsContainer.style.display = 'none';
 	piperSettingsContainer.style.display = 'none';
 	espeakSettingsContainer.style.display = 'none';
 	defaultVoiceContainer.style.display = 'none';
@@ -123,6 +129,14 @@ function toggleTtsProviderFields() {
 		`;
 		if (globalSettings.openai_voice) {
 			select.value = globalSettings.openai_voice;
+		}
+	} else if (provider === 'mistral') {
+		if(mistralTtsContainer) mistralTtsContainer.style.display = 'block';
+		defaultVoiceContainer.style.display = 'block';
+		if (document.getElementById('mistralApiKey').value) {
+			loadMistralVoices();
+		} else {
+			document.getElementById('ttsVoiceSelect').innerHTML = `<option value="">${t('msgPlsKey')}</option>`;
 		}
 	} else if (provider === 'gtts') {
 		defaultVoiceContainer.style.display = 'block';
@@ -246,6 +260,7 @@ async function loadSettings() {
 	savedDefaults.gemini = data.default_model_gemini || '';
 	savedDefaults.openrouter = data.default_model_openrouter || '';
 	savedDefaults.openai = data.default_model_openai || '';
+	savedDefaults.mistral = data.default_model_mistral || '';
 	
 	const langDropdown = document.getElementById('appLanguageSelect');
 	if (langDropdown) langDropdown.value = appLanguage;
@@ -254,6 +269,7 @@ async function loadSettings() {
 	if(document.getElementById('geminiApiKey')) document.getElementById('geminiApiKey').value = data.gemini_api_key || '';
 	if(document.getElementById('openrouterApiKey')) document.getElementById('openrouterApiKey').value = data.openrouter_api_key || '';
 	if(document.getElementById('openaiApiKey')) document.getElementById('openaiApiKey').value = data.openai_api_key || '';
+	if(document.getElementById('mistralApiKey')) document.getElementById('mistralApiKey').value = data.mistral_api_key || '';
 	
 	if(document.getElementById('openrouterFreeToggle')) document.getElementById('openrouterFreeToggle').checked = data.openrouter_free_only || false;
 	if(document.getElementById('openrouterCustomSearchToggle')) document.getElementById('openrouterCustomSearchToggle').checked = data.openrouter_use_custom_search || false;
@@ -307,6 +323,9 @@ async function loadSettings() {
 	
 	if (document.getElementById('openaiTtsModelSelect')) {
 		document.getElementById('openaiTtsModelSelect').value = data.openai_tts_model || 'tts-1';
+	}
+	if (document.getElementById('mistralTtsModelSelect')) {
+		document.getElementById('mistralTtsModelSelect').value = data.mistral_tts_model || 'voxtral-mini-tts-2603';
 	}
 	
 	if (data.tts_provider === 'gtts') {
@@ -448,6 +467,88 @@ async function loadElevenLabsVoices() {
 		}
 	} catch(e) {
 		select.innerHTML = `<option value="">${t('msgNetErr')}</option>`;
+	}
+}
+
+async function loadMistralVoices() {
+	const apiKey = document.getElementById('mistralApiKey').value;
+	if (!apiKey) {
+		alert(t('msgPlsKey'));
+		return;
+	}
+	const select = document.getElementById('ttsVoiceSelect');
+	select.innerHTML = '<option value="">...</option>';
+	try {
+		const res = await fetch('/tts/mistral/voices', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ api_key: apiKey })
+		});
+		if (res.redirected) { window.location.href = res.url; return; }
+		const voices = await res.json();
+		if (voices.error) {
+			select.innerHTML = `<option value="">${t('msgModelErr')}</option>`;
+			alert(voices.error);
+			return;
+		}
+		select.innerHTML = '';
+		voices.forEach(voice => {
+			const option = document.createElement('option');
+			option.value = voice.id;
+			option.textContent = voice.name || voice.id;
+			select.appendChild(option);
+		});
+		if (globalSettings.mistral_voice) {
+			const exists = Array.from(select.options).some(opt => opt.value === globalSettings.mistral_voice);
+			if (exists) select.value = globalSettings.mistral_voice;
+		}
+	} catch(e) {
+		select.innerHTML = `<option value="">${t('msgNetErr')}</option>`;
+	}
+}
+
+async function createMistralVoice() {
+	const apiKey = document.getElementById('mistralApiKey').value;
+	const name = document.getElementById('mistralVoiceName').value.trim();
+	const languages = document.getElementById('mistralVoiceLanguages').value.trim();
+	const gender = document.getElementById('mistralVoiceGender').value;
+	const sampleInput = document.getElementById('mistralVoiceSample');
+	const consent = document.getElementById('mistralVoiceConsent').checked;
+	const status = document.getElementById('mistralVoiceCreateStatus');
+	const sample = sampleInput.files[0];
+
+	if (!apiKey || !name || !sample || !consent) {
+		alert(t('msgPlsKey'));
+		return;
+	}
+
+	status.style.display = 'block';
+	status.textContent = 'Creating voice...';
+
+	const formData = new FormData();
+	formData.append('api_key', apiKey);
+	formData.append('name', name);
+	formData.append('languages', languages);
+	formData.append('gender', gender);
+	formData.append('sample', sample);
+
+	try {
+		const res = await fetch('/tts/mistral/voices/create', {
+			method: 'POST',
+			body: formData
+		});
+		if (res.redirected) { window.location.href = res.url; return; }
+		const data = await res.json();
+		if (!res.ok || data.error) {
+			status.textContent = 'Error: ' + (data.error || res.status);
+			return;
+		}
+		status.textContent = 'Voice created.';
+		globalSettings.mistral_voice = data.id || '';
+		await loadMistralVoices();
+		if (data.id) document.getElementById('ttsVoiceSelect').value = data.id;
+	} catch(e) {
+		status.textContent = t('msgNetErr');
 	}
 }
 
@@ -682,6 +783,7 @@ async function saveSettings() {
 	const geminiKey = document.getElementById('geminiApiKey') ? document.getElementById('geminiApiKey').value : '';
 	const openrouterKey = document.getElementById('openrouterApiKey') ? document.getElementById('openrouterApiKey').value : '';
 	const openaiKey = document.getElementById('openaiApiKey') ? document.getElementById('openaiApiKey').value : '';
+	const mistralKey = document.getElementById('mistralApiKey') ? document.getElementById('mistralApiKey').value : '';
 	const openrouterFree = document.getElementById('openrouterFreeToggle') ? document.getElementById('openrouterFreeToggle').checked : false;
 	const openrouterCustomSearch = document.getElementById('openrouterCustomSearchToggle') ? document.getElementById('openrouterCustomSearchToggle').checked : false;
 	const prompt = document.getElementById('sysPrompt').value;
@@ -715,6 +817,8 @@ async function saveSettings() {
 	
 	const openaiTtsModelSelect = document.getElementById('openaiTtsModelSelect');
 	const openaiTtsModel = openaiTtsModelSelect ? openaiTtsModelSelect.value : 'tts-1';
+	const mistralTtsModelSelect = document.getElementById('mistralTtsModelSelect');
+	const mistralTtsModel = mistralTtsModelSelect ? mistralTtsModelSelect.value : 'voxtral-mini-tts-2603';
 	
 	const emailAccounts = [];
 	let defaultEmailIndex = 0;
@@ -749,6 +853,7 @@ async function saveSettings() {
 				gemini_api_key: geminiKey,
 				openrouter_api_key: openrouterKey,
 				openai_api_key: openaiKey,
+				mistral_api_key: mistralKey,
 				openrouter_free_only: openrouterFree,
 				openrouter_use_custom_search: openrouterCustomSearch,
 				system_prompt: prompt, 
@@ -768,6 +873,7 @@ async function saveSettings() {
 				default_model_gemini: savedDefaults.gemini,
 				default_model_openrouter: savedDefaults.openrouter,
 				default_model_openai: savedDefaults.openai,
+				default_model_mistral: savedDefaults.mistral,
 				tts_enabled: ttsActive,
 				tts_download_enabled: ttsDownloadActive,
 				elevenlabs_music_enabled: elMusicActive,
@@ -788,6 +894,8 @@ async function saveSettings() {
 				navertts_voice: ttsProvider === 'naver' ? voiceSelectVal : globalSettings.navertts_voice,
 				openai_voice: ttsProvider === 'openai' ? voiceSelectVal : globalSettings.openai_voice,
 				openai_tts_model: ttsProvider === 'openai' ? openaiTtsModel : globalSettings.openai_tts_model,
+				mistral_voice: ttsProvider === 'mistral' ? voiceSelectVal : globalSettings.mistral_voice,
+				mistral_tts_model: ttsProvider === 'mistral' ? mistralTtsModel : globalSettings.mistral_tts_model,
 				email_accounts: emailAccounts,
 				default_email_account: defaultEmailIndex
 			})

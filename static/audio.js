@@ -80,7 +80,7 @@ function playTTS(btn, customText = null, onFinishCallback = null) {
 	const isPreview = customText !== null && !onFinishCallback;
 	const provider = isPreview ? document.getElementById('ttsProviderSelect').value : globalSettings.tts_provider;
 	
-	const canNativeStream = ['openai', 'elevenlabs', 'googlecloud'].includes(provider);
+	const canNativeStream = ['openai', 'elevenlabs', 'googlecloud', 'mistral'].includes(provider);
 
 	if (canNativeStream) {
 		ttsQueue.push(plainText);
@@ -130,6 +130,15 @@ async function prefetchNextTts(provider, isPreview) {
 		if (!body.api_key || !body.voice_id) {
 			stopTTS();
 			alert("Bitte OpenAI API Key eingeben");
+			return;
+		}
+	} else if (provider === 'mistral') {
+		body.voice_id = isPreview ? document.getElementById('ttsVoiceSelect').value : globalSettings.mistral_voice;
+		body.model_id = isPreview ? document.getElementById('mistralTtsModelSelect').value : globalSettings.mistral_tts_model;
+		body.api_key = isPreview ? (document.getElementById('mistralApiKey') ? document.getElementById('mistralApiKey').value : '') : globalSettings.mistral_api_key;
+		if (!body.api_key || !body.voice_id) {
+			stopTTS();
+			alert(t('msgPlsKey'));
 			return;
 		}
 	} else if (provider === 'espeak') {

@@ -65,6 +65,7 @@ def stream_tts(req_id):
 	elif provider == "gtts": return process_gtts(data)
 	elif provider == "naver": return process_naver(data)
 	elif provider == "openai": return process_openai(data)
+	elif provider == "mistral": return process_mistral(data)
 	elif provider == "espeak": return process_espeak(data)
 	elif provider == "elevenlabs": return process_elevenlabs(data)
 	elif provider == "googlecloud": return process_googlecloud(data)
@@ -367,6 +368,91 @@ def process_openai(data):
 			return jsonify({"error": f"OpenAI Error: {r.text}"}), r.status_code
 			
 		return Response(r.iter_content(chunk_size=4096), mimetype="audio/mpeg")
+	except Exception as e:
+		return jsonify({"error": str(e)}), 500
+
+@tts_bp.route("/tts/mistral/voices", methods=['POST'])
+def get_mistral_voices():
+	username = session['username']
+	user_settings = load_settings(username)
+	data = request.json
+	api_key = data.get("api_key", user_settings.get("mistral_api_key"))
+	if not api_key:
+		return jsonify({"error": "No API Key"}), 400
+	try:
+		headers = {"Authorization": f"Bearer {api_key}"}
+		r = requests.get("https://api.mistral.ai/v1/audio/voices", headers=headers)
+		r.raise_for_status()
+		return jsonify(r.json().get("items", []))
+	except requests.exceptions.HTTPError as e:
+		return jsonify({"error": f"Mistral API error: {e.response.text}"}), e.response.status_code
+	except Exception as e:
+		return jsonify({"error": str(e)}), 500
+
+@tts_bp.route("/tts/mistral/voices/create", methods=['POST'])
+def create_mistral_voice():
+	username = session['username']
+	user_settings = load_settings(username)
+	api_key = request.form.get("api_key", user_settings.get("mistral_api_key", ""))
+	name = request.form.get("name", "").strip()
+	languages_raw = request.form.get("languages", "")
+	gender = request.form.get("gender", "").strip()
+	sample = request.files.get("sample")
+
+	if not api_key or not name or not sample:
+		return jsonify({"error": "Missing API key, voice name, or audio sample"}), 400
+
+	try:
+		sample_bytes = sample.read()
+		payload = {
+			"name": name,
+			"sample_audio": base64.b64encode(sample_bytes).decode("utf-8"),
+			"sample_filename": sample.filename or "sample.mp3"
+		}
+		languages = [lang.strip() for lang in languages_raw.split(",") if lang.strip()]
+		if languages:
+			payload["languages"] = languages
+		if gender:
+			payload["gender"] = gender
+
+		headers = {
+			"Authorization": f"Bearer {api_key}",
+			"Content-Type": "application/json"
+		}
+		r = requests.post("https://api.mistral.ai/v1/audio/voices", headers=headers, json=payload)
+		if not r.ok:
+			return jsonify({"error": f"Mistral API error: {r.text}"}), r.status_code
+		return jsonify(r.json())
+	except Exception as e:
+		return jsonify({"error": str(e)}), 500
+
+def process_mistral(data):
+	text = data.get("text", "")
+	voice_id = data.get("voice_id", "")
+	model = data.get("model_id", "voxtral-mini-tts-2603")
+	api_key = data.get("api_key", "")
+
+	if not api_key or not text or not voice_id:
+		return jsonify({"error": "Missing parameters or API key"}), 400
+
+	try:
+		headers = {
+			"Authorization": f"Bearer {api_key}",
+			"Content-Type": "application/json"
+		}
+		payload = {
+			"model": model,
+			"input": text,
+			"voice_id": voice_id,
+			"response_format": "mp3"
+		}
+		r = requests.post("https://api.mistral.ai/v1/audio/speech", headers=headers, json=payload)
+		if not r.ok:
+			return jsonify({"error": f"Mistral TTS Error: {r.text}"}), r.status_code
+
+		audio_b64 = r.json().get("audio_data", "")
+		audio_bytes = base64.b64decode(audio_b64)
+		return Response(audio_bytes, mimetype="audio/mpeg")
 	except Exception as e:
 		return jsonify({"error": str(e)}), 500
 

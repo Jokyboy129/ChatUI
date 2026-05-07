@@ -1,5 +1,5 @@
 let currentChatId = null;
-let savedDefaults = { ollama: "", gemini: "", openrouter: "", openai: "" };
+let savedDefaults = { ollama: "", gemini: "", openrouter: "", openai: "", mistral: "" };
 let globalSettings = { 
 	tts_enabled: false, 
 	tts_download_enabled: false, 
@@ -20,6 +20,8 @@ let globalSettings = {
 	navertts_voice: 'en',
 	openai_voice: 'alloy',
 	openai_tts_model: 'tts-1',
+	mistral_voice: '',
+	mistral_tts_model: 'voxtral-mini-tts-2603',
 	show_token_count: true, 
 	email_accounts: [], 
 	default_email_account: 0 

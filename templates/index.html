@@ -165,6 +165,7 @@
 				<option value="gemini">Google Gemini (Cloud)</option>
 				<option value="openrouter">OpenRouter (Cloud)</option>
 				<option value="openai">OpenAI (Cloud)</option>
+				<option value="mistral">Mistral (Cloud)</option>
 			</select>
 			
 			<div id="geminiKeyContainer" style="display:none; margin-bottom:1rem;">
@@ -188,6 +189,11 @@
 			<div id="openaiKeyContainer" style="display:none; margin-bottom:1rem;">
 				<label for="openaiApiKey" style="display:block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">OpenAI API-Schlüssel:</label>
 				<input type="password" id="openaiApiKey" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;" placeholder="sk-...">
+			</div>
+
+			<div id="mistralKeyContainer" style="display:none; margin-bottom:1rem;">
+				<label for="mistralApiKey" style="display:block; font-weight: bold; margin-bottom: 0.5rem; font-size: 0.9rem;">Mistral API Key:</label>
+				<input type="password" id="mistralApiKey" style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #ced4da;" placeholder="...">
 			</div>
 
 			<label for="defaultModelSelect" style="display:block; font-weight: bold; margin-bottom: 0.5rem;" data-i18n="defModel">Standardmodell für diesen Anbieter:</label>
@@ -267,6 +273,7 @@
 					<option value="elevenlabs">ElevenLabs (Cloud, Voice Cloning)</option>
 					<option value="googlecloud">Google Cloud TTS (Premium)</option>
 					<option value="openai">OpenAI (Cloud)</option>
+					<option value="mistral">Mistral Voxtral (Cloud, Voice Cloning)</option>
 					<option value="naver">NaverTTS / Papago (Cloud, Kostenlos)</option>
 				</select>
 				
@@ -300,6 +307,31 @@
 						<option value="tts-1-hd">tts-1-hd (Hohe Qualität)</option>
 						<option value="gpt-4o-mini-tts">gpt-4o-mini-tts (Neu & Ausdrucksstark)</option>
 					</select>
+				</div>
+
+				<div id="mistralTtsSettingsContainer" style="display:none; margin-bottom:0.5rem;">
+					<label for="mistralTtsModelSelect" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;">Mistral TTS model:</label>
+					<select id="mistralTtsModelSelect" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border-radius:4px; border:1px solid #ced4da;">
+						<option value="voxtral-mini-tts-2603">voxtral-mini-tts-2603</option>
+					</select>
+					<button type="button" class="btn-secondary" style="margin-bottom:0.5rem; padding:0.3rem 0.8rem; font-size:0.8rem;" onclick="loadMistralVoices()">Load Mistral voices</button>
+					<div style="border:1px solid #dee2e6; border-radius:4px; padding:0.6rem; margin-top:0.5rem;">
+						<label for="mistralVoiceName" style="display:block; font-size: 0.9rem; margin-bottom: 0.2rem;">Create custom voice:</label>
+						<input type="text" id="mistralVoiceName" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border-radius:4px; border:1px solid #ced4da;" placeholder="Name">
+						<input type="text" id="mistralVoiceLanguages" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border-radius:4px; border:1px solid #ced4da;" placeholder="Languages, e.g. de,en">
+						<select id="mistralVoiceGender" style="width:100%; padding:0.5rem; margin-bottom:0.5rem; border-radius:4px; border:1px solid #ced4da;">
+							<option value="">Gender optional</option>
+							<option value="female">female</option>
+							<option value="male">male</option>
+						</select>
+						<input type="file" id="mistralVoiceSample" accept="audio/*" style="width:100%; margin-bottom:0.5rem;">
+						<label style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; margin-bottom:0.5rem;">
+							<input type="checkbox" id="mistralVoiceConsent" style="margin:0;">
+							I have consent to use this voice sample.
+						</label>
+						<button type="button" class="btn-secondary" style="padding:0.3rem 0.8rem; font-size:0.8rem;" onclick="createMistralVoice()">Create voice</button>
+						<div id="mistralVoiceCreateStatus" style="display:none; margin-top:0.5rem; font-size:0.8rem; color:#666;"></div>
+					</div>
 				</div>
 
 				<div id="piperSettingsContainer" style="display:none; margin-bottom:0.5rem;">

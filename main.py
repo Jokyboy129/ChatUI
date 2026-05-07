@@ -82,7 +82,7 @@ try:
 	import email_agent
 	
 	from tts_system import tts_bp
-	from ai_handlers import generate_ollama, generate_gemini, generate_openai, generate_openrouter, get_chat_title
+	from ai_handlers import generate_ollama, generate_gemini, generate_openai, generate_mistral, generate_openrouter, get_chat_title
 	from tools_agent import update_ytdlp, process_document_commands, process_ffmpeg_commands, process_youtube_commands, extract_email_info, parse_email_intent
 
 except Exception as e:
@@ -281,6 +281,19 @@ def models():
 			return jsonify(sorted(models_list))
 		except Exception:
 			return jsonify(["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"])
+	elif prov == "mistral":
+		if not user_settings.get("mistral_api_key"):
+			return jsonify([])
+		try:
+			url = "https://api.mistral.ai/v1/models"
+			headers = {"Authorization": f"Bearer {user_settings.get('mistral_api_key', '')}"}
+			r = requests.get(url, headers=headers)
+			r.raise_for_status()
+			data = r.json()
+			models_list = [m["id"] for m in data.get("data", []) if "id" in m]
+			return jsonify(sorted(models_list))
+		except Exception:
+			return jsonify(["mistral-large-latest", "mistral-medium-latest", "mistral-small-latest"])
 	else:
 		try:
 			r = requests.get(f"{OLLAMA_URL}/api/tags")
@@ -773,6 +786,8 @@ def send_message():
 		return Response(generate_openrouter(gen_kwargs), mimetype="text/plain")
 	elif user_settings.get("ai_provider") == "openai":
 		return Response(generate_openai(gen_kwargs), mimetype="text/plain")
+	elif user_settings.get("ai_provider") == "mistral":
+		return Response(generate_mistral(gen_kwargs), mimetype="text/plain")
 	else:
 		return Response(generate_ollama(gen_kwargs), mimetype="text/plain")
 
