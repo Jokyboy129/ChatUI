@@ -3,6 +3,15 @@ let googleCloudVoicesData = [];
 let emailAccountsDraft = [];
 let defaultEmailDraftIndex = 0;
 
+function getApiKeyValue(id) {
+	const el = document.getElementById(id);
+	if (!el) return '';
+	// Wenn das Feld deaktiviert ist (vom Admin gesteuert),
+	// übergeben wir nichts (leerer String), um den Nutzer-Key nicht fälschlich zu überschreiben.
+	if (el.disabled) return '';
+	return el.value;
+}
+
 function switchSettingsTab(tabId) {
 	document.querySelectorAll('.settings-pane').forEach(p => p.classList.remove('active'));
 	document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
@@ -83,19 +92,19 @@ function toggleTtsProviderFields() {
 	piperSettingsContainer.style.display = 'none';
 	espeakSettingsContainer.style.display = 'none';
 	defaultVoiceContainer.style.display = 'none';
-	previewTtsBtn.style.display = 'inline-block';
+	previewTtsBtn.style.display = 'block';
 	
 	if (provider === 'elevenlabs') {
 		elevenlabsKeyContainer.style.display = 'block';
 		defaultVoiceContainer.style.display = 'block';
-		if (document.getElementById('elevenlabsApiKey').value) {
+		if (getApiKeyValue('elevenlabsApiKey') || globalSettings.elevenlabs_api_key_available) {
 			loadElevenLabsVoices();
 		} else {
 			document.getElementById('ttsVoiceSelect').innerHTML = `<option value="">${t('msgPlsKey')}</option>`;
 		}
 	} else if (provider === 'googlecloud') {
 		if(googleCloudSettingsContainer) googleCloudSettingsContainer.style.display = 'block';
-		if (document.getElementById('googleCloudApiKey').value) {
+		if (getApiKeyValue('googleCloudApiKey') || globalSettings.googlecloud_api_key_available) {
 			loadGoogleCloudVoices();
 		}
 	} else if (provider === 'pyttsx3') {
@@ -135,7 +144,7 @@ function toggleTtsProviderFields() {
 	} else if (provider === 'mistral') {
 		if(mistralTtsContainer) mistralTtsContainer.style.display = 'block';
 		defaultVoiceContainer.style.display = 'block';
-		if (document.getElementById('mistralApiKey').value) {
+		if (getApiKeyValue('mistralApiKey') || globalSettings.mistral_api_key_available) {
 			loadMistralVoices();
 		} else {
 			document.getElementById('ttsVoiceSelect').innerHTML = `<option value="">${t('msgPlsKey')}</option>`;
@@ -313,10 +322,32 @@ async function loadSettings() {
 	if (langDropdown) langDropdown.value = appLanguage;
 	
 	document.getElementById('providerSelect').value = data.ai_provider || 'ollama';
-	if(document.getElementById('geminiApiKey')) document.getElementById('geminiApiKey').value = data.gemini_api_key || '';
-	if(document.getElementById('openrouterApiKey')) document.getElementById('openrouterApiKey').value = data.openrouter_api_key || '';
-	if(document.getElementById('openaiApiKey')) document.getElementById('openaiApiKey').value = data.openai_api_key || '';
-	if(document.getElementById('mistralApiKey')) document.getElementById('mistralApiKey').value = data.mistral_api_key || '';
+	
+	// Dynamische Zuweisung und Sperre der API-Keys
+	const handleApiKeyField = (inputId, keyField, availableField, data) => {
+		const el = document.getElementById(inputId);
+		if (!el) return;
+		if (data[keyField]) {
+			el.type = 'password';
+			el.value = data[keyField];
+			el.disabled = false;
+		} else if (data[availableField]) {
+			el.type = 'text';
+			el.value = t('msgAdminKey');
+			el.disabled = true;
+		} else {
+			el.type = 'password';
+			el.value = '';
+			el.disabled = false;
+		}
+	};
+
+	handleApiKeyField('geminiApiKey', 'gemini_api_key', 'gemini_api_key_available', data);
+	handleApiKeyField('openrouterApiKey', 'openrouter_api_key', 'openrouter_api_key_available', data);
+	handleApiKeyField('openaiApiKey', 'openai_api_key', 'openai_api_key_available', data);
+	handleApiKeyField('mistralApiKey', 'mistral_api_key', 'mistral_api_key_available', data);
+	handleApiKeyField('elevenlabsApiKey', 'elevenlabs_api_key', 'elevenlabs_api_key_available', data);
+	handleApiKeyField('googleCloudApiKey', 'googlecloud_api_key', 'googlecloud_api_key_available', data);
 	
 	if(document.getElementById('openrouterFreeToggle')) document.getElementById('openrouterFreeToggle').checked = data.openrouter_free_only || false;
 	if(document.getElementById('openrouterCustomSearchToggle')) document.getElementById('openrouterCustomSearchToggle').checked = data.openrouter_use_custom_search || false;
@@ -383,8 +414,6 @@ async function loadSettings() {
 	}
 	
 	document.getElementById('ttsProviderSelect').value = data.tts_provider || 'sapi5';
-	document.getElementById('elevenlabsApiKey').value = data.elevenlabs_api_key || '';
-	if(document.getElementById('googleCloudApiKey')) document.getElementById('googleCloudApiKey').value = data.googlecloud_api_key || '';
 	
 	if (document.getElementById('openaiTtsModelSelect')) {
 		document.getElementById('openaiTtsModelSelect').value = data.openai_tts_model || 'tts-1';
@@ -433,6 +462,25 @@ async function loadAdminUsers() {
 		}
 		const data = await res.json();
 		container.innerHTML = '';
+		
+		const agentKeyMap = {
+			'tool_doc_gen_enabled': 'toolDocGenEnable',
+			'tool_email_send_enabled': 'toolEmailSendEnable',
+			'tool_email_read_enabled': 'toolEmailReadEnable',
+			'tool_youtube_enabled': 'toolYoutubeEnable',
+			'tool_audio_enabled': 'toolAudioEnable',
+			'web_search_enabled': 'webSearchEnable'
+		};
+		
+		const apiKeyMap = {
+			'gemini_api_key': 'Gemini API',
+			'openrouter_api_key': 'OpenRouter API',
+			'openai_api_key': 'OpenAI API',
+			'mistral_api_key': 'Mistral API',
+			'elevenlabs_api_key': 'ElevenLabs API',
+			'googlecloud_api_key': 'Google Cloud API'
+		};
+
 		data.users.forEach(user => {
 			if (user.is_admin) return;
 			const policy = user.policy || {};
@@ -441,33 +489,49 @@ async function loadAdminUsers() {
 			const block = document.createElement('div');
 			block.className = 'admin-user-block';
 			block.dataset.username = user.username;
-			block.style.cssText = 'border:1px solid #ced4da; border-radius:4px; padding:0.8rem; margin-bottom:0.8rem;';
+			block.style.cssText = 'border:1px solid #ced4da; border-radius:4px; padding:0.8rem; margin-bottom:0.8rem; display:block;';
 			block.innerHTML = `
 				<h3 style="margin-top:0; font-size:1rem;">${escapeHtml(user.username)}</h3>
-				<label style="display:block; font-weight:bold; margin-bottom:0.4rem;">${t('Shared API keys')}</label>
-				${data.api_key_fields.map(key => `
-					<label style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.3rem;">
-						<input type="checkbox" class="admin-shared-key" value="${key}" ${shared.has(key) ? 'checked' : ''}>
-						${key}
-					</label>
-				`).join('')}
-				<label style="display:block; font-weight:bold; margin-top:0.7rem; margin-bottom:0.4rem;">${t('Locked agents')}</label>
-				${data.lockable_agent_fields.map(key => `
-					<label style="display:block; margin-bottom:0.3rem;">
-						${key}
-						<select class="admin-lock-agent" data-key="${key}" style="width:100%; padding:0.3rem;">
-							<option value="" ${Object.prototype.hasOwnProperty.call(locked, key) ? '' : 'selected'}>${t('User choice')}</option>
-							<option value="true" ${locked[key] === true ? 'selected' : ''}>${t('Force enabled')}</option>
-							<option value="false" ${locked[key] === false ? 'selected' : ''}>${t('Force disabled')}</option>
-						</select>
-					</label>
-				`).join('')}
-				<label style="display:flex; align-items:center; gap:0.4rem; margin-top:0.7rem; margin-bottom:0.4rem;">
-					<input type="checkbox" class="admin-lock-prompt" ${policy.lock_system_prompt ? 'checked' : ''}>
-					${t('Lock system prompt')}
-				</label>
-				<textarea class="admin-system-prompt" style="width:100%; height:80px; margin-bottom:0.5rem;">${escapeHtml(policy.system_prompt || '')}</textarea>
-				<button type="button" class="btn-primary" onclick="saveAdminUserPolicy(this)">${t('Save user policy')}</button>
+				
+				<div style="margin-bottom:1rem; display:block;">
+					<label style="display:block; font-weight:bold; margin-bottom:0.4rem;">${t('Shared API keys')}</label>
+					${data.api_key_fields.map(key => `
+						<div style="display:block; margin-bottom:0.5rem;">
+							<label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+								<input type="checkbox" class="admin-shared-key" value="${key}" ${shared.has(key) ? 'checked' : ''} style="margin:0;">
+								<span>${apiKeyMap[key] || key}</span>
+							</label>
+						</div>
+					`).join('')}
+				</div>
+				
+				<div style="margin-bottom:1rem; display:block;">
+					<label style="display:block; font-weight:bold; margin-bottom:0.4rem;">${t('Locked agents')}</label>
+					${data.lockable_agent_fields.map(key => `
+						<div style="display:block; margin-bottom:0.5rem;">
+							<label style="display:block; margin-bottom:0.2rem;">${agentKeyMap[key] ? t(agentKeyMap[key]) : key}</label>
+							<select class="admin-lock-agent" data-key="${key}" style="width:100%; padding:0.3rem; display:block; border-radius:4px; border:1px solid #ced4da;">
+								<option value="" ${Object.prototype.hasOwnProperty.call(locked, key) ? '' : 'selected'}>${t('User choice')}</option>
+								<option value="true" ${locked[key] === true ? 'selected' : ''}>${t('Force enabled')}</option>
+								<option value="false" ${locked[key] === false ? 'selected' : ''}>${t('Force disabled')}</option>
+							</select>
+						</div>
+					`).join('')}
+				</div>
+				
+				<div style="margin-bottom:1rem; display:block;">
+					<div style="display:block; margin-bottom:0.5rem;">
+						<label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; font-weight:bold;">
+							<input type="checkbox" class="admin-lock-prompt" ${policy.lock_system_prompt ? 'checked' : ''} style="margin:0;">
+							<span>${t('Lock system prompt')}</span>
+						</label>
+					</div>
+					<textarea class="admin-system-prompt" style="width:100%; height:80px; margin-bottom:0.5rem; display:block; border-radius:4px; border:1px solid #ced4da; padding:0.5rem;">${escapeHtml(policy.system_prompt || '')}</textarea>
+				</div>
+				
+				<div style="display:block;">
+					<button type="button" class="btn-primary" style="width:100%; display:block;" onclick="saveAdminUserPolicy(this)">${t('Save user policy')}</button>
+				</div>
 			`;
 			container.appendChild(block);
 		});
@@ -591,7 +655,7 @@ async function loadEdgeVoices() {
 }
 
 async function loadElevenLabsVoices() {
-	const apiKey = document.getElementById('elevenlabsApiKey').value;
+	const apiKey = getApiKeyValue('elevenlabsApiKey');
 	if (!apiKey && !globalSettings.elevenlabs_api_key_available) {
 		alert(t('msgPlsKey'));
 		return;
@@ -628,7 +692,7 @@ async function loadElevenLabsVoices() {
 }
 
 async function loadMistralVoices() {
-	const apiKey = document.getElementById('mistralApiKey').value;
+	const apiKey = getApiKeyValue('mistralApiKey');
 	if (!apiKey && !globalSettings.mistral_api_key_available) {
 		alert(t('msgPlsKey'));
 		return;
@@ -651,7 +715,7 @@ async function loadMistralVoices() {
 		}
 		select.innerHTML = '';
 		if (voices.length > 0) {
-			document.getElementById('mistralDeleteVoiceBtn').style.display = 'inline-block';
+			document.getElementById('mistralDeleteVoiceBtn').style.display = 'block';
 		} else {
 			document.getElementById('mistralDeleteVoiceBtn').style.display = 'none';
 		}
@@ -672,7 +736,7 @@ async function loadMistralVoices() {
 }
 
 async function createMistralVoice() {
-	const apiKey = document.getElementById('mistralApiKey').value;
+	const apiKey = getApiKeyValue('mistralApiKey');
 	const name = document.getElementById('mistralVoiceName').value.trim();
 	const languages = document.getElementById('mistralVoiceLanguages').value.trim();
 	const gender = document.getElementById('mistralVoiceGender').value;
@@ -722,7 +786,7 @@ async function createMistralVoice() {
 }
 
 async function deleteMistralVoice() {
-	const apiKey = document.getElementById('mistralApiKey').value;
+	const apiKey = getApiKeyValue('mistralApiKey');
 	const voiceSelect = document.getElementById('ttsVoiceSelect');
 	const voiceId = voiceSelect.value;
 	
@@ -755,7 +819,7 @@ async function deleteMistralVoice() {
 }
 
 async function loadGoogleCloudVoices() {
-	const apiKey = document.getElementById('googleCloudApiKey').value;
+	const apiKey = getApiKeyValue('googleCloudApiKey');
 	if (!apiKey && !globalSettings.googlecloud_api_key_available) {
 		alert(t('msgPlsKey'));
 		return;
@@ -918,7 +982,7 @@ function updatePiperVoiceUI() {
 	
 	if (voiceData.downloaded) {
 		dlBtn.style.display = 'none';
-		previewBtn.style.display = 'inline-block';
+		previewBtn.style.display = 'block';
 		
 		const speakersKeys = Object.keys(voiceData.speakers);
 		if (speakersKeys.length > 1) {
@@ -939,7 +1003,7 @@ function updatePiperVoiceUI() {
 			speakerSelect.innerHTML = `<option value="${speakersKeys[0]}">${voiceData.speakers[speakersKeys[0]]}</option>`;
 		}
 	} else {
-		dlBtn.style.display = 'inline-block';
+		dlBtn.style.display = 'block';
 		previewBtn.style.display = 'none';
 		speakerContainer.style.display = 'none';
 	}
@@ -982,10 +1046,15 @@ async function downloadPiperVoice() {
 async function saveSettings() {
 	const language = document.getElementById('appLanguageSelect').value;
 	const provider = document.getElementById('providerSelect').value;
-	const geminiKey = document.getElementById('geminiApiKey') ? document.getElementById('geminiApiKey').value : '';
-	const openrouterKey = document.getElementById('openrouterApiKey') ? document.getElementById('openrouterApiKey').value : '';
-	const openaiKey = document.getElementById('openaiApiKey') ? document.getElementById('openaiApiKey').value : '';
-	const mistralKey = document.getElementById('mistralApiKey') ? document.getElementById('mistralApiKey').value : '';
+	
+	// API Keys sicher auslesen (deaktivierte Felder als leerer String)
+	const geminiKey = getApiKeyValue('geminiApiKey');
+	const openrouterKey = getApiKeyValue('openrouterApiKey');
+	const openaiKey = getApiKeyValue('openaiApiKey');
+	const mistralKey = getApiKeyValue('mistralApiKey');
+	const elApiKey = getApiKeyValue('elevenlabsApiKey');
+	const gcApiKey = getApiKeyValue('googleCloudApiKey');
+	
 	const openrouterFree = document.getElementById('openrouterFreeToggle') ? document.getElementById('openrouterFreeToggle').checked : false;
 	const openrouterCustomSearch = document.getElementById('openrouterCustomSearchToggle') ? document.getElementById('openrouterCustomSearchToggle').checked : false;
 	const prompt = document.getElementById('sysPrompt').value;
@@ -1009,8 +1078,7 @@ async function saveSettings() {
 	const ttsDownloadActive = document.getElementById('ttsDownloadToggle').checked;
 	const elMusicActive = document.getElementById('elevenlabsMusicToggle').checked;
 	const ttsProvider = document.getElementById('ttsProviderSelect').value;
-	const elApiKey = document.getElementById('elevenlabsApiKey').value;
-	const gcApiKey = document.getElementById('googleCloudApiKey') ? document.getElementById('googleCloudApiKey').value : '';
+
 	const gcLang = document.getElementById('googleCloudLangSelect') ? document.getElementById('googleCloudLangSelect').value : globalSettings.googlecloud_language;
 	const gcVoice = document.getElementById('googleCloudVoiceSelect') ? document.getElementById('googleCloudVoiceSelect').value : globalSettings.googlecloud_voice;
 	const voiceSelectVal = document.getElementById('ttsVoiceSelect').value;

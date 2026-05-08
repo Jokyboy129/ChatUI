@@ -41,6 +41,7 @@ setup_data = {
 	"gemini_api_key": "",
 	"openrouter_api_key": "",
 	"openai_api_key": "",
+	"mistral_api_key": "",
 	"elevenlabs_api_key": "",
 	"tts_enabled": False,
 	"tts_provider": "sapi5",
@@ -223,10 +224,11 @@ class InstallWizard(wx.Frame):
 					]
 			
 			elif current_method == "build_page_provider":
-				setup_data["ai_provider"] = ["ollama", "gemini", "openrouter", "openai"][self.combo_provider.GetSelection()]
+				setup_data["ai_provider"] = ["ollama", "gemini", "openrouter", "openai", "mistral"][self.combo_provider.GetSelection()]
 				setup_data["gemini_api_key"] = self.txt_gemini.GetValue()
 				setup_data["openrouter_api_key"] = self.txt_openrouter.GetValue()
 				setup_data["openai_api_key"] = self.txt_openai.GetValue()
+				setup_data["mistral_api_key"] = self.txt_mistral.GetValue()
 				setup_data["elevenlabs_api_key"] = self.txt_elevenlabs.GetValue()
 				
 			elif current_method == "build_page_tts":
@@ -293,10 +295,10 @@ class InstallWizard(wx.Frame):
 		self.content_sizer.Add(title, 0, wx.ALL, 10)
 		
 		self.combo_provider = wx.RadioBox(self.content_panel, label=get_text("Standard-Anbieter wählen", "Choose default provider"),
-										  choices=["Ollama (Lokal)", "Google Gemini (Cloud)", "OpenRouter (Cloud)", "OpenAI (Cloud)"])
+										  choices=["Ollama (Lokal)", "Google Gemini (Cloud)", "OpenRouter (Cloud)", "OpenAI (Cloud)", "Mistral (Cloud)"])
 		self.content_sizer.Add(self.combo_provider, 0, wx.ALL | wx.EXPAND, 10)
 		
-		grid = wx.FlexGridSizer(4, 2, 10, 10)
+		grid = wx.FlexGridSizer(5, 2, 10, 10)
 		grid.AddGrowableCol(1, 1)
 		
 		grid.Add(wx.StaticText(self.content_panel, label="Gemini API Key:"), 0, wx.ALIGN_CENTER_VERTICAL)
@@ -310,6 +312,10 @@ class InstallWizard(wx.Frame):
 		grid.Add(wx.StaticText(self.content_panel, label="OpenAI API Key:"), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.txt_openai = wx.TextCtrl(self.content_panel)
 		grid.Add(self.txt_openai, 1, wx.EXPAND)
+
+		grid.Add(wx.StaticText(self.content_panel, label="Mistral API Key:"), 0, wx.ALIGN_CENTER_VERTICAL)
+		self.txt_mistral = wx.TextCtrl(self.content_panel)
+		grid.Add(self.txt_mistral, 1, wx.EXPAND)
 		
 		grid.Add(wx.StaticText(self.content_panel, label="ElevenLabs API Key (für Musik):"), 0, wx.ALIGN_CENTER_VERTICAL)
 		self.txt_elevenlabs = wx.TextCtrl(self.content_panel)
@@ -427,6 +433,10 @@ class InstallWizard(wx.Frame):
 				users_dir_src = os.path.join(TARGET_DIR, "users")
 				if os.path.exists(users_dir_src):
 					shutil.copytree(users_dir_src, os.path.join(backup_dir, "users"))
+
+				piper_dir_src = os.path.join(TARGET_DIR, "piper_models")
+				if os.path.exists(piper_dir_src):
+					shutil.copytree(piper_dir_src, os.path.join(backup_dir, "piper_models"))
 					
 			if os.path.exists(TARGET_DIR):
 				shutil.rmtree(TARGET_DIR)
@@ -444,6 +454,10 @@ class InstallWizard(wx.Frame):
 				backup_users_dir = os.path.join(backup_dir, "users")
 				if os.path.exists(backup_users_dir):
 					shutil.copytree(backup_users_dir, os.path.join(TARGET_DIR, "users"), dirs_exist_ok=True)
+
+				backup_piper_dir = os.path.join(backup_dir, "piper_models")
+				if os.path.exists(backup_piper_dir):
+					shutil.copytree(backup_piper_dir, os.path.join(TARGET_DIR, "piper_models"), dirs_exist_ok=True)
 					
 			else:
 				self.log(get_text("Schreibe neue Konfiguration...", "Writing new configuration..."))
@@ -460,6 +474,7 @@ class InstallWizard(wx.Frame):
 					"gemini_api_key": setup_data["gemini_api_key"],
 					"openrouter_api_key": setup_data["openrouter_api_key"],
 					"openai_api_key": setup_data["openai_api_key"],
+					"mistral_api_key": setup_data["mistral_api_key"],
 					"elevenlabs_api_key": setup_data["elevenlabs_api_key"],
 					"tts_enabled": setup_data["tts_enabled"],
 					"tts_provider": setup_data["tts_provider"],
