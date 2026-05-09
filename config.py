@@ -32,7 +32,7 @@ DEFAULT_SETTINGS = {
 	"openai_api_key": "",
 	"mistral_api_key": "",
 	"openrouter_free_only": False,
-	"openrouter_use_custom_search": False,
+	"native_websearch": True,
 	"system_prompt": "You are a helpful assistant.",
 	"language": "auto",
 	"history_enabled": True,

@@ -199,6 +199,9 @@ def generate_gemini(kwargs):
 			"systemInstruction": {"parts": [{"text": user_settings.get("system_prompt", "")}]},
 			"contents": contents
 		}
+		
+		if kwargs.get('do_native_search'):
+			payload["tools"] = [{"googleSearch": {}}]
 
 		r = requests.post(url, headers=headers, json=payload, stream=True)
 		r.raise_for_status()
@@ -587,7 +590,7 @@ def generate_openrouter(kwargs):
 			"stream_options": {"include_usage": True}
 		}
 		
-		if force_search or (user_settings.get("web_search_enabled") and user_settings.get("web_search_mode") == "auto" and not user_settings.get("openrouter_use_custom_search")):
+		if kwargs.get('do_native_search'):
 			payload["plugins"] = [{"id": "web", "max_results": user_settings.get("web_search_max_results", 5)}]
 		
 		r = requests.post(url, headers=headers, json=payload, stream=True)

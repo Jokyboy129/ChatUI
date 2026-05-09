@@ -372,7 +372,7 @@ def settings():
 		system_prompt_locked = user_policy.get("lock_system_prompt", False)
 		
 		allowed_keys = [
-			"show_token_count", "openrouter_use_custom_search", 
+			"show_token_count", "native_websearch", 
 			"tts_download_enabled", "elevenlabs_music_enabled", 
 			"language", "email_accounts", "default_email_account",
 			"tool_doc_gen_enabled", "tool_email_send_enabled",
@@ -398,7 +398,7 @@ def settings():
 						user_settings[key] = int(value)
 					except ValueError:
 						user_settings[key] = 0
-				elif key in ["show_token_count", "openrouter_use_custom_search", "tts_download_enabled", "elevenlabs_music_enabled", "tool_doc_gen_enabled", "tool_email_send_enabled", "tool_email_read_enabled", "tool_youtube_enabled", "tool_audio_enabled", "web_search_enabled"]:
+				elif key in ["show_token_count", "native_websearch", "tts_download_enabled", "elevenlabs_music_enabled", "tool_doc_gen_enabled", "tool_email_send_enabled", "tool_email_read_enabled", "tool_youtube_enabled", "tool_audio_enabled", "web_search_enabled"]:
 					user_settings[key] = bool(value)
 				elif key == "email_accounts":
 					user_settings[key] = value if isinstance(value, list) else []
@@ -548,7 +548,6 @@ def send_message():
 	username = session['username']
 	user_settings = apply_admin_policy(username, load_settings(username))
 	de = is_lang_de()
-	
 	
 	cleanup_uploads()
 	message_text = ""
@@ -761,12 +760,15 @@ def send_message():
 
 	search_query = None
 	past_messages = get_chat_history(username, chat_id) if user_settings.get("history_enabled", True) else []
-	openrouter_native_search = (user_settings.get("ai_provider") == "openrouter" and user_settings.get("web_search_enabled") and not user_settings.get("openrouter_use_custom_search"))
 	
-	if user_settings.get("web_search_enabled") and not openrouter_native_search:
+	use_native_pipeline = user_settings.get("native_websearch", True) and user_settings.get("ai_provider") in ["gemini", "openrouter"]
+	do_native_search = use_native_pipeline and (force_search or (user_settings.get("web_search_enabled") and user_settings.get("web_search_mode") == "auto"))
+	do_custom_search = not use_native_pipeline and (force_search or (user_settings.get("web_search_enabled") and user_settings.get("web_search_mode") == "auto"))
+	
+	if do_custom_search:
 		if force_search:
 			search_query = get_search_query(message_text, model, user_settings, forced=True, history=past_messages)
-		elif user_settings.get("web_search_mode") == "auto":
+		else:
 			search_query = get_search_query(message_text, model, user_settings, forced=False, history=past_messages)
 			
 		if search_query:
@@ -838,7 +840,8 @@ def send_message():
 		"process_ffmpeg": process_ffmpeg_commands,
 		"process_yt": process_youtube_commands,
 		"process_doc": process_document_commands,
-		"force_search": force_search
+		"force_search": force_search,
+		"do_native_search": do_native_search
 	}
 
 	if user_settings.get("ai_provider") == "gemini":

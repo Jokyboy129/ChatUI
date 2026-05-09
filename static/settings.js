@@ -60,6 +60,24 @@ function toggleProviderFields() {
 		mistralContainer.style.display = 'block';
 	}
 	
+	const providerNames = {
+		'ollama': 'Ollama',
+		'gemini': 'Google Gemini',
+		'openrouter': 'OpenRouter',
+		'openai': 'OpenAI',
+		'mistral': 'Mistral'
+	};
+	const pName = providerNames[provider] || provider;
+	const nativeTextSpan = document.getElementById('nativeWebsearchSpan');
+	if (nativeTextSpan) {
+		const supported = ['gemini', 'openrouter'].includes(provider);
+		let text = t('nativeWebsearch').replace('{provider}', pName);
+		if (!supported) {
+			text += ' (' + t('notSupportedFallback') + ')';
+		}
+		nativeTextSpan.textContent = text;
+	}
+	
 	updateSettingsModelList();
 }
 
@@ -350,7 +368,7 @@ async function loadSettings() {
 	handleApiKeyField('googleCloudApiKey', 'googlecloud_api_key', 'googlecloud_api_key_available', data);
 	
 	if(document.getElementById('openrouterFreeToggle')) document.getElementById('openrouterFreeToggle').checked = data.openrouter_free_only || false;
-	if(document.getElementById('openrouterCustomSearchToggle')) document.getElementById('openrouterCustomSearchToggle').checked = data.openrouter_use_custom_search || false;
+	if(document.getElementById('nativeWebsearchToggle')) document.getElementById('nativeWebsearchToggle').checked = data.native_websearch !== false;
 	
 	toggleProviderFields(); 
 
@@ -1056,7 +1074,7 @@ async function saveSettings() {
 	const gcApiKey = getApiKeyValue('googleCloudApiKey');
 	
 	const openrouterFree = document.getElementById('openrouterFreeToggle') ? document.getElementById('openrouterFreeToggle').checked : false;
-	const openrouterCustomSearch = document.getElementById('openrouterCustomSearchToggle') ? document.getElementById('openrouterCustomSearchToggle').checked : false;
+	const nativeWebSearch = document.getElementById('nativeWebsearchToggle') ? document.getElementById('nativeWebsearchToggle').checked : true;
 	const prompt = document.getElementById('sysPrompt').value;
 	const hist = document.getElementById('historyToggle').checked;
 	const ctxLimit = parseInt(document.getElementById('contextLimit').value) || 0;
@@ -1107,7 +1125,7 @@ async function saveSettings() {
 				openai_api_key: openaiKey,
 				mistral_api_key: mistralKey,
 				openrouter_free_only: openrouterFree,
-				openrouter_use_custom_search: openrouterCustomSearch,
+				native_websearch: nativeWebSearch,
 				system_prompt: prompt, 
 				history_enabled: hist,
 				history_context_limit: ctxLimit,
