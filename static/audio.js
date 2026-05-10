@@ -6,6 +6,7 @@ let isFetchingTts = false;
 let ttsAbortController = null;
 let currentTtsBtn = null;
 let ttsFinishCallback = null;
+let lastAudioUrl = null;
 
 let dictationActive = false;
 let isVoiceRecording = false;
@@ -49,6 +50,8 @@ function playTTS(btn, customText = null, onFinishCallback = null) {
 		return;
 	}
 	stopTTS();
+
+	lastAudioUrl = null;
 
 	let text = customText;
 	if (!text) {
@@ -147,6 +150,10 @@ async function prefetchNextTts(provider, isPreview) {
 	} else if (provider === 'elevenlabs') {
 		body.voice_id = isPreview ? document.getElementById('ttsVoiceSelect').value : globalSettings.elevenlabs_voice;
 		body.api_key = isPreview ? document.getElementById('elevenlabsApiKey').value : globalSettings.elevenlabs_api_key;
+		
+		const elModelSelect = document.getElementById('elevenlabsTtsModelSelect');
+		body.model_id = isPreview ? (elModelSelect ? elModelSelect.value : '') : globalSettings.elevenlabs_tts_model;
+
 		if ((!body.api_key && !globalSettings.elevenlabs_api_key_available) || !body.voice_id) {
 			stopTTS();
 			alert(t('msgPlsKey'));
@@ -200,6 +207,24 @@ function playNextTtsAudio() {
 
 	if (ttsAudioQueue.length === 0) {
 		if (ttsQueue.length === 0 && !isFetchingTts) {
+			
+			if (globalSettings.tts_download_enabled && currentTtsBtn && lastAudioUrl) {
+				const messageDiv = currentTtsBtn.closest('.message');
+				if (messageDiv && !messageDiv.querySelector('.tts-download-link')) {
+					const dlLink = document.createElement('a');
+					dlLink.href = lastAudioUrl;
+					dlLink.download = `tts_audio.mp3`;
+					dlLink.className = 'tts-download-link';
+					dlLink.textContent = 'Audio herunterladen';
+					dlLink.style.cssText = 'display: block; margin-top: 10px; font-size: 0.85em; text-decoration: underline; cursor: pointer; color: inherit;';
+					
+					const contentDiv = messageDiv.querySelector('.message-content');
+					if (contentDiv) {
+						contentDiv.appendChild(dlLink);
+					}
+				}
+			}
+
 			stopTTS();
 		} else {
 			setTimeout(playNextTtsAudio, 50);
@@ -208,6 +233,8 @@ function playNextTtsAudio() {
 	}
 
 	const audioUrl = ttsAudioQueue.shift();
+	lastAudioUrl = audioUrl; 
+	
 	currentAudio = new Audio(audioUrl);
 	currentAudio.onended = () => {
 		currentAudio = null;

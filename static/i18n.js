@@ -185,7 +185,22 @@ const i18n = {
 		ariaMusic: "Musik generieren",
 		ariaTools: "Werkzeuge",
 		ariaSend: "Nachricht senden",
-		ariaDeleteChat: "Chat löschen"
+		ariaDeleteChat: "Chat löschen",
+
+		// --- NEUE ÜBERSETZUNGEN FÜR gTTS & NaverTTS ---
+		German: "Deutsch",
+		English: "Englisch",
+		French: "Französisch",
+		Spanish: "Spanisch",
+		Italian: "Italienisch",
+		Korean: "Koreanisch",
+		Japanese: "Japanisch",
+		"Chinese (Simplified)": "Chinesisch (Vereinfacht)",
+		Russian: "Russisch",
+		"English (en)": "Englisch (en)",
+		"Korean (ko)": "Koreanisch (ko)",
+		"Japanese (ja)": "Japanisch (ja)",
+		"Spanish (es)": "Spanisch (es)"
 	},
 	en: {
 		closeBtn: "Close",
@@ -373,7 +388,22 @@ const i18n = {
 		ariaMusic: "Generate music",
 		ariaTools: "Tools",
 		ariaSend: "Send message",
-		ariaDeleteChat: "Delete chat"
+		ariaDeleteChat: "Delete chat",
+
+		// --- NEUE ÜBERSETZUNGEN FÜR gTTS & NaverTTS ---
+		German: "German",
+		English: "English",
+		French: "French",
+		Spanish: "Spanish",
+		Italian: "Italian",
+		Korean: "Korean",
+		Japanese: "Japanese",
+		"Chinese (Simplified)": "Chinese (Simplified)",
+		Russian: "Russian",
+		"English (en)": "English (en)",
+		"Korean (ko)": "Korean (ko)",
+		"Japanese (ja)": "Japanese (ja)",
+		"Spanish (es)": "Spanish (es)"
 	}
 };
 
