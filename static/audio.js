@@ -1,6 +1,7 @@
 let currentAudio = null;
 let ttsQueue = [];
 let ttsAudioQueue = [];
+let currentTtsBlobs = [];
 let isPlayingQueue = false;
 let isFetchingTts = false;
 let ttsAbortController = null;
@@ -28,6 +29,7 @@ function stopTTS() {
 	}
 	ttsQueue = [];
 	ttsAudioQueue = [];
+	currentTtsBlobs = [];
 	isFetchingTts = false;
 
 	document.querySelectorAll('.tts-btn').forEach(b => {
@@ -52,6 +54,7 @@ function playTTS(btn, customText = null, onFinishCallback = null) {
 	stopTTS();
 
 	lastAudioUrl = null;
+	currentTtsBlobs = [];
 
 	let text = customText;
 	if (!text) {
@@ -187,7 +190,13 @@ async function prefetchNextTts(provider, isPreview) {
 
 		const data = await res.json();
 		if (data.stream_url && isPlayingQueue) {
-			ttsAudioQueue.push(data.stream_url);
+			const audioRes = await fetch(data.stream_url, { signal: ttsAbortController.signal });
+			if (!audioRes.ok) throw new Error("Audio stream failed");
+			const blob = await audioRes.blob();
+			const objUrl = URL.createObjectURL(blob);
+			
+			ttsAudioQueue.push({ url: objUrl, blob: blob });
+			currentTtsBlobs.push(blob);
 		}
 	} catch(err) {
 		if (err.name !== 'AbortError') {
@@ -208,12 +217,19 @@ function playNextTtsAudio() {
 	if (ttsAudioQueue.length === 0) {
 		if (ttsQueue.length === 0 && !isFetchingTts) {
 			
-			if (globalSettings.tts_download_enabled && currentTtsBtn && lastAudioUrl) {
+			if (globalSettings.tts_download_enabled && currentTtsBtn && currentTtsBlobs.length > 0) {
 				const messageDiv = currentTtsBtn.closest('.message');
 				if (messageDiv && !messageDiv.querySelector('.tts-download-link')) {
+					
+					const combinedBlob = new Blob(currentTtsBlobs, { type: currentTtsBlobs[0].type });
+					const finalUrl = URL.createObjectURL(combinedBlob);
+					
+					let ext = "mp3";
+					if (combinedBlob.type.includes("wav")) ext = "wav";
+
 					const dlLink = document.createElement('a');
-					dlLink.href = lastAudioUrl;
-					dlLink.download = `tts_audio.mp3`;
+					dlLink.href = finalUrl;
+					dlLink.download = `tts_audio.${ext}`;
 					dlLink.className = 'tts-download-link';
 					dlLink.textContent = 'Audio herunterladen';
 					dlLink.style.cssText = 'display: block; margin-top: 10px; font-size: 0.85em; text-decoration: underline; cursor: pointer; color: inherit;';
@@ -232,10 +248,10 @@ function playNextTtsAudio() {
 		return;
 	}
 
-	const audioUrl = ttsAudioQueue.shift();
-	lastAudioUrl = audioUrl; 
+	const audioItem = ttsAudioQueue.shift();
+	lastAudioUrl = audioItem.url; 
 	
-	currentAudio = new Audio(audioUrl);
+	currentAudio = new Audio(audioItem.url);
 	currentAudio.onended = () => {
 		currentAudio = null;
 		playNextTtsAudio();

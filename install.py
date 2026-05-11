@@ -425,7 +425,7 @@ class InstallWizard(wx.Frame):
 			if is_update:
 				self.log(get_text("Erstelle Backup alter Dateien...", "Creating backup of old files..."))
 				os.makedirs(backup_dir, exist_ok=True)
-				for item in ["settings.json", "history.db", "users_auth.json", "secret.key"]:
+				for item in ["settings.json", "history.db", "users_auth.json", "secret.key", "admin_policy.json"]:
 					src = os.path.join(TARGET_DIR, item)
 					if os.path.exists(src):
 						shutil.copy2(src, backup_dir)
@@ -446,7 +446,7 @@ class InstallWizard(wx.Frame):
 			
 			if is_update:
 				self.log(get_text("Stelle Backup wieder her...", "Restoring backup..."))
-				for item in ["users_auth.json", "secret.key"]:
+				for item in ["users_auth.json", "secret.key", "admin_policy.json", "settings.json", "history.db"]:
 					src = os.path.join(backup_dir, item)
 					if os.path.exists(src):
 						shutil.copy2(src, os.path.join(TARGET_DIR, item))
