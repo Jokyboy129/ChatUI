@@ -104,6 +104,9 @@
 							<li id="menu-tool-audio" role="menuitemcheckbox" aria-checked="false" tabindex="-1" data-value="audio" onclick="toggleToolItem(this)" onkeydown="handleToolKeydown(event, this)">
 								<span class="menu-check" aria-hidden="true"></span> <span data-i18n="toolAudio">Audio/FFmpeg Agent</span>
 							</li>
+							<li id="menu-tool-pc_control" role="menuitemcheckbox" aria-checked="false" tabindex="-1" data-value="pc_control" onclick="toggleToolItem(this)" onkeydown="handleToolKeydown(event, this)">
+								<span class="menu-check" aria-hidden="true"></span> <span data-i18n="toolPcControl">PC-Steuerung</span>
+							</li>
 						</ul>
 					</div>
 					
@@ -280,6 +283,12 @@
 				<label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
 					<input type="checkbox" id="toolAudioToggle" style="margin:0;">
 					<span data-i18n="toolAudioEnable">Audio/FFmpeg Agent aktivieren</span>
+				</label>
+			</div>
+			<div style="display: block; margin-bottom: 0.5rem;">
+				<label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+					<input type="checkbox" id="toolPcControlToggle" style="margin:0;">
+					<span data-i18n="toolPcControlEnable">PC-Steuerung aktivieren</span>
 				</label>
 			</div>
 		</div>

@@ -83,7 +83,7 @@ try:
 	
 	from tts_system import tts_bp
 	from ai_handlers import generate_ollama, generate_gemini, generate_openai, generate_mistral, generate_openrouter, get_chat_title
-	from tools_agent import update_ytdlp, process_document_commands, process_ffmpeg_commands, process_youtube_commands, extract_email_info, parse_email_intent
+	from tools_agent import update_ytdlp, process_document_commands, process_ffmpeg_commands, process_youtube_commands, extract_email_info, parse_email_intent, process_pc_control_commands
 
 except Exception as e:
 	err_msg = traceback.format_exc()
@@ -824,6 +824,24 @@ def send_message():
 	if "doc_gen" in active_tools:
 		doc_writer_instruction = "\n\n[SYSTEM INSTRUCTION: The Document Generator Tool is active. You MUST create a downloadable document based on the user's request. Use EXACTLY this format: [SAVE_DOC]filename.ext|||Complete document content here[/SAVE_DOC]. Supported extensions: .docx, .doc, .rtf, .txt, .md, .csv. For .docx, use standard Markdown formatting (**bold**, *italic*, # Headings). DO NOT write prose outside the tag!]"
 
+	pc_control_instruction = ""
+	if "pc_control" in active_tools:
+		pc_control_instruction = (
+			"\n\n[SYSTEM INSTRUCTION: The PC Control Tool is active. You can run terminal commands or use TeamViewer-style GUI automation commands to control and interact with the user's Windows computer. "
+			"You can output multiple commands in separate `[RUN_CMD]...[/RUN_CMD]` tags, or chain them in a single tag using Windows operators (e.g., `&` or `&&`). "
+			"Available GUI automation commands: "
+			"- `screenshot`: Takes a screenshot of the user's desktop, saves it, and renders it inside the chat, allowing you to see what is on their screen. ALWAYS start with `[RUN_CMD]screenshot[/RUN_CMD]` when you need to inspect the current state of an application or locate buttons to click! "
+			"- `click <x> <y>`: Sets the mouse cursor position to pixel coordinates x, y and triggers a left mouse click. E.g. `[RUN_CMD]click 100 200[/RUN_CMD]`. "
+			"- `type <text>`: Types the specified text at the current active cursor/focus. E.g. `[RUN_CMD]type Hello World[/RUN_CMD]`. "
+			"- `press <key>`: Presses a special keyboard key (e.g., enter, tab, backspace, esc, space). E.g. `[RUN_CMD]press enter[/RUN_CMD]`, `[RUN_CMD]press tab[/RUN_CMD]`. "
+			"You can also run regular terminal commands (e.g., `[RUN_CMD]start thunderbird[/RUN_CMD]`, `[RUN_CMD]calc.exe[/RUN_CMD]`, or `[RUN_CMD]explorer.exe[/RUN_CMD]`). "
+			"For complex or combined tasks where command-line args aren't enough (e.g., opening an app, typing, or clicking a button): "
+			"1. Start by launching the application (e.g., `[RUN_CMD]start thunderbird[/RUN_CMD]`). "
+			"2. Call `[RUN_CMD]screenshot[/RUN_CMD]` to view the application UI. "
+			"3. Use `click` to focus a text field, `type` to fill in details, and `click` or `press` to submit. Take screenshots after each action if needed to verify! "
+			"You are allowed to write normal conversational message text outside the tags to communicate with the user, describe your plan, report progress, or ask questions!]"
+		)
+
 	gen_kwargs = {
 		"username": username,
 		"chat_id": chat_id,
@@ -837,9 +855,11 @@ def send_message():
 		"youtube_instruction": youtube_instruction,
 		"email_agent_output": email_agent_output,
 		"doc_writer_instruction": doc_writer_instruction,
+		"pc_control_instruction": pc_control_instruction,
 		"process_ffmpeg": process_ffmpeg_commands,
 		"process_yt": process_youtube_commands,
 		"process_doc": process_document_commands,
+		"process_pc_control": process_pc_control_commands,
 		"force_search": force_search,
 		"do_native_search": do_native_search
 	}

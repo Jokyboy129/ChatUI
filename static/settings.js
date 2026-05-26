@@ -387,8 +387,9 @@ async function loadSettings() {
 	document.getElementById('toolEmailReadToggle').checked = data.tool_email_read_enabled !== false;
 	document.getElementById('toolYoutubeToggle').checked = data.tool_youtube_enabled !== false;
 	document.getElementById('toolAudioToggle').checked = data.tool_audio_enabled !== false;
+	document.getElementById('toolPcControlToggle').checked = data.tool_pc_control_enabled !== false;
 	const lockedAgents = data.locked_agents || {};
-	['toolDocGenToggle', 'toolEmailSendToggle', 'toolEmailReadToggle', 'toolYoutubeToggle', 'toolAudioToggle', 'webSearchToggle'].forEach(id => {
+	['toolDocGenToggle', 'toolEmailSendToggle', 'toolEmailReadToggle', 'toolYoutubeToggle', 'toolAudioToggle', 'toolPcControlToggle', 'webSearchToggle'].forEach(id => {
 		const el = document.getElementById(id);
 		if (el) el.disabled = false;
 	});
@@ -398,6 +399,7 @@ async function loadSettings() {
 		tool_email_read_enabled: 'toolEmailReadToggle',
 		tool_youtube_enabled: 'toolYoutubeToggle',
 		tool_audio_enabled: 'toolAudioToggle',
+		tool_pc_control_enabled: 'toolPcControlToggle',
 		web_search_enabled: 'webSearchToggle'
 	};
 	Object.keys(lockedAgents).forEach(key => {
@@ -411,6 +413,7 @@ async function loadSettings() {
 	document.getElementById('menu-tool-email_read').style.display = data.tool_email_read_enabled !== false ? 'block' : 'none';
 	document.getElementById('menu-tool-youtube').style.display = data.tool_youtube_enabled !== false ? 'block' : 'none';
 	document.getElementById('menu-tool-audio').style.display = data.tool_audio_enabled !== false ? 'block' : 'none';
+	document.getElementById('menu-tool-pc_control').style.display = data.tool_pc_control_enabled !== false ? 'block' : 'none';
 	document.getElementById('menu-tool-websearch').style.display = data.web_search_enabled ? 'block' : 'none';
 
 	const anyToolActive = (data.tool_doc_gen_enabled !== false) || 
@@ -418,6 +421,7 @@ async function loadSettings() {
 						  (data.tool_email_read_enabled !== false) || 
 						  (data.tool_youtube_enabled !== false) || 
 						  (data.tool_audio_enabled !== false) || 
+						  (data.tool_pc_control_enabled !== false) || 
 						  data.web_search_enabled;
 						  
 	document.getElementById('toolsMenuBtn').style.display = anyToolActive ? 'inline-block' : 'none';
@@ -487,6 +491,7 @@ async function loadAdminUsers() {
 			'tool_email_read_enabled': 'toolEmailReadEnable',
 			'tool_youtube_enabled': 'toolYoutubeEnable',
 			'tool_audio_enabled': 'toolAudioEnable',
+			'tool_pc_control_enabled': 'toolPcControlEnable',
 			'web_search_enabled': 'webSearchEnable'
 		};
 		
@@ -1089,6 +1094,7 @@ async function saveSettings() {
 	const toolEmailRead = document.getElementById('toolEmailReadToggle').checked;
 	const toolYoutube = document.getElementById('toolYoutubeToggle').checked;
 	const toolAudio = document.getElementById('toolAudioToggle').checked;
+	const toolPcControl = document.getElementById('toolPcControlToggle').checked;
 	
 	const showTokens = document.getElementById('showTokenCountToggle') ? document.getElementById('showTokenCountToggle').checked : true;
 	
@@ -1138,6 +1144,7 @@ async function saveSettings() {
 				tool_email_read_enabled: toolEmailRead,
 				tool_youtube_enabled: toolYoutube,
 				tool_audio_enabled: toolAudio,
+				tool_pc_control_enabled: toolPcControl,
 				show_token_count: showTokens,
 				default_model_ollama: savedDefaults.ollama,
 				default_model_gemini: savedDefaults.gemini,
