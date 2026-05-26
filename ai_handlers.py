@@ -30,11 +30,9 @@ def generate_ollama(kwargs):
 	youtube_instruction = kwargs['youtube_instruction']
 	email_agent_output = kwargs['email_agent_output']
 	doc_writer_instruction = kwargs['doc_writer_instruction']
-	pc_control_instruction = kwargs.get('pc_control_instruction', '')
 	process_ffmpeg = kwargs['process_ffmpeg']
 	process_yt = kwargs['process_yt']
 	process_doc = kwargs['process_doc']
-	process_pc_control = kwargs.get('process_pc_control')
 
 	full_response = ""
 	is_reasoning = False
@@ -52,7 +50,7 @@ def generate_ollama(kwargs):
 			api_msg["content"] = clean_content
 			api_messages.append(api_msg)
 
-		if (user_settings.get("web_search_enabled") and search_query) or relevant_chunks or audio_instruction or youtube_instruction or email_agent_output or doc_writer_instruction or pc_control_instruction:
+		if (user_settings.get("web_search_enabled") and search_query) or relevant_chunks or audio_instruction or youtube_instruction or email_agent_output or doc_writer_instruction:
 			hidden_prompt = ""
 			if search_query or relevant_chunks or email_agent_output:
 				hidden_prompt += "\n\n[SYSTEM INSTRUCTION: Answer the request using the provided INFO blocks. DO NOT output or repeat the raw info blocks in your response. Respond in the same language as the user.]"
@@ -64,8 +62,6 @@ def generate_ollama(kwargs):
 				hidden_prompt += email_agent_output
 			if doc_writer_instruction:
 				hidden_prompt += doc_writer_instruction
-			if pc_control_instruction:
-				hidden_prompt += pc_control_instruction
 			api_messages[-1]["content"] += hidden_prompt
 
 		payload = {"model": model, "messages": api_messages, "stream": True}
@@ -129,12 +125,6 @@ def generate_ollama(kwargs):
 			full_response += doc_results
 			yield json.dumps({"content": doc_results}) + "\n"
 
-		if process_pc_control:
-			pc_control_results = process_pc_control(full_response, de)
-			if pc_control_results:
-				full_response += pc_control_results
-				yield json.dumps({"content": pc_control_results}) + "\n"
-		
 		save_message_to_db(username, chat_id, "assistant", full_response, usage=usage_dict)
 		
 	except requests.exceptions.HTTPError as e:
@@ -158,11 +148,9 @@ def generate_gemini(kwargs):
 	youtube_instruction = kwargs['youtube_instruction']
 	email_agent_output = kwargs['email_agent_output']
 	doc_writer_instruction = kwargs['doc_writer_instruction']
-	pc_control_instruction = kwargs.get('pc_control_instruction', '')
 	process_ffmpeg = kwargs['process_ffmpeg']
 	process_yt = kwargs['process_yt']
 	process_doc = kwargs['process_doc']
-	process_pc_control = kwargs.get('process_pc_control')
 
 	full_response = ""
 	usage_dict = None
@@ -193,7 +181,7 @@ def generate_gemini(kwargs):
 					})
 			contents.append({"role": role, "parts": parts})
 
-		if (user_settings.get("web_search_enabled") and search_query) or relevant_chunks or audio_instruction or youtube_instruction or email_agent_output or doc_writer_instruction or pc_control_instruction:
+		if (user_settings.get("web_search_enabled") and search_query) or relevant_chunks or audio_instruction or youtube_instruction or email_agent_output or doc_writer_instruction:
 			hidden_prompt = ""
 			if search_query or relevant_chunks or email_agent_output:
 				hidden_prompt += "\n\n[SYSTEM INSTRUCTION: Answer the request using the provided INFO blocks. DO NOT output or repeat the raw info blocks in your response. Respond in the same language as the user.]"
@@ -205,8 +193,6 @@ def generate_gemini(kwargs):
 				hidden_prompt += email_agent_output
 			if doc_writer_instruction:
 				hidden_prompt += doc_writer_instruction
-			if pc_control_instruction:
-				hidden_prompt += pc_control_instruction
 			contents[-1]["parts"][0]["text"] += hidden_prompt
 
 		payload = {
@@ -262,12 +248,6 @@ def generate_gemini(kwargs):
 		if doc_results:
 			full_response += doc_results
 			yield json.dumps({"content": doc_results}) + "\n"
-
-		if process_pc_control:
-			pc_control_results = process_pc_control(full_response, de)
-			if pc_control_results:
-				full_response += pc_control_results
-				yield json.dumps({"content": pc_control_results}) + "\n"
 		
 		save_message_to_db(username, chat_id, "assistant", full_response, usage=usage_dict)
 			
@@ -292,11 +272,9 @@ def generate_openai(kwargs):
 	youtube_instruction = kwargs['youtube_instruction']
 	email_agent_output = kwargs['email_agent_output']
 	doc_writer_instruction = kwargs['doc_writer_instruction']
-	pc_control_instruction = kwargs.get('pc_control_instruction', '')
 	process_ffmpeg = kwargs['process_ffmpeg']
 	process_yt = kwargs['process_yt']
 	process_doc = kwargs['process_doc']
-	process_pc_control = kwargs.get('process_pc_control')
 
 	full_response = ""
 	usage_dict = None
@@ -328,7 +306,7 @@ def generate_openai(kwargs):
 			else:
 				api_messages.append({"role": msg["role"], "content": clean_content})
 
-		if relevant_chunks or audio_instruction or youtube_instruction or email_agent_output or doc_writer_instruction or pc_control_instruction:
+		if relevant_chunks or audio_instruction or youtube_instruction or email_agent_output or doc_writer_instruction:
 			hidden_prompt = ""
 			if relevant_chunks or email_agent_output:
 				hidden_prompt += "\n\n[SYSTEM INSTRUCTION: Answer the request using the provided INFO blocks. DO NOT output or repeat the raw info blocks in your response. Respond in the same language as the user.]"
@@ -340,8 +318,6 @@ def generate_openai(kwargs):
 				hidden_prompt += email_agent_output
 			if doc_writer_instruction:
 				hidden_prompt += doc_writer_instruction
-			if pc_control_instruction:
-				hidden_prompt += pc_control_instruction
 				
 			if isinstance(api_messages[-1]["content"], list):
 				api_messages[-1]["content"][0]["text"] += hidden_prompt
@@ -402,12 +378,6 @@ def generate_openai(kwargs):
 		if doc_results:
 			full_response += doc_results
 			yield json.dumps({"content": doc_results}) + "\n"
-
-		if process_pc_control:
-			pc_control_results = process_pc_control(full_response, de)
-			if pc_control_results:
-				full_response += pc_control_results
-				yield json.dumps({"content": pc_control_results}) + "\n"
 			
 		save_message_to_db(username, chat_id, "assistant", full_response, usage=usage_dict)
 			
@@ -432,11 +402,9 @@ def generate_mistral(kwargs):
 	youtube_instruction = kwargs['youtube_instruction']
 	email_agent_output = kwargs['email_agent_output']
 	doc_writer_instruction = kwargs['doc_writer_instruction']
-	pc_control_instruction = kwargs.get('pc_control_instruction', '')
 	process_ffmpeg = kwargs['process_ffmpeg']
 	process_yt = kwargs['process_yt']
 	process_doc = kwargs['process_doc']
-	process_pc_control = kwargs.get('process_pc_control')
 
 	full_response = ""
 	usage_dict = None
@@ -465,7 +433,7 @@ def generate_mistral(kwargs):
 			else:
 				api_messages.append({"role": msg["role"], "content": clean_content})
 
-		if relevant_chunks or audio_instruction or youtube_instruction or email_agent_output or doc_writer_instruction or pc_control_instruction:
+		if relevant_chunks or audio_instruction or youtube_instruction or email_agent_output or doc_writer_instruction:
 			hidden_prompt = ""
 			if relevant_chunks or email_agent_output:
 				hidden_prompt += "\n\n[SYSTEM INSTRUCTION: Answer the request using the provided INFO blocks. DO NOT output or repeat the raw info blocks in your response. Respond in the same language as the user.]"
@@ -477,8 +445,6 @@ def generate_mistral(kwargs):
 				hidden_prompt += email_agent_output
 			if doc_writer_instruction:
 				hidden_prompt += doc_writer_instruction
-			if pc_control_instruction:
-				hidden_prompt += pc_control_instruction
 
 			if isinstance(api_messages[-1]["content"], list):
 				api_messages[-1]["content"][0]["text"] += hidden_prompt
@@ -538,12 +504,6 @@ def generate_mistral(kwargs):
 			full_response += doc_results
 			yield json.dumps({"content": doc_results}) + "\n"
 
-		if process_pc_control:
-			pc_control_results = process_pc_control(full_response, de)
-			if pc_control_results:
-				full_response += pc_control_results
-				yield json.dumps({"content": pc_control_results}) + "\n"
-
 		save_message_to_db(username, chat_id, "assistant", full_response, usage=usage_dict)
 
 	except requests.exceptions.HTTPError as e:
@@ -567,11 +527,9 @@ def generate_openrouter(kwargs):
 	youtube_instruction = kwargs['youtube_instruction']
 	email_agent_output = kwargs['email_agent_output']
 	doc_writer_instruction = kwargs['doc_writer_instruction']
-	pc_control_instruction = kwargs.get('pc_control_instruction', '')
 	process_ffmpeg = kwargs['process_ffmpeg']
 	process_yt = kwargs['process_yt']
 	process_doc = kwargs['process_doc']
-	process_pc_control = kwargs.get('process_pc_control')
 	force_search = kwargs.get('force_search', False)
 
 	full_response = ""
@@ -607,7 +565,7 @@ def generate_openrouter(kwargs):
 			else:
 				api_messages.append({"role": msg["role"], "content": clean_content})
 
-		if relevant_chunks or audio_instruction or youtube_instruction or email_agent_output or doc_writer_instruction or pc_control_instruction:
+		if relevant_chunks or audio_instruction or youtube_instruction or email_agent_output or doc_writer_instruction:
 			hidden_prompt = ""
 			if relevant_chunks or email_agent_output:
 				hidden_prompt += "\n\n[SYSTEM INSTRUCTION: Answer the request using the provided INFO blocks. DO NOT output or repeat the raw info blocks in your response. Respond in the same language as the user.]"
@@ -619,8 +577,6 @@ def generate_openrouter(kwargs):
 				hidden_prompt += email_agent_output
 			if doc_writer_instruction:
 				hidden_prompt += doc_writer_instruction
-			if pc_control_instruction:
-				hidden_prompt += pc_control_instruction
 				
 			if isinstance(api_messages[-1]["content"], list):
 				api_messages[-1]["content"][0]["text"] += hidden_prompt
@@ -702,12 +658,6 @@ def generate_openrouter(kwargs):
 		if doc_results:
 			full_response += doc_results
 			yield json.dumps({"content": doc_results}) + "\n"
-
-		if process_pc_control:
-			pc_control_results = process_pc_control(full_response, de)
-			if pc_control_results:
-				full_response += pc_control_results
-				yield json.dumps({"content": pc_control_results}) + "\n"
 			
 		save_message_to_db(username, chat_id, "assistant", full_response, usage=usage_dict)
 			

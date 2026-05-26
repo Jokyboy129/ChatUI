@@ -204,7 +204,13 @@ function toggleTtsProviderFields() {
 
 function updateSavedDefault() {
 	const provider = document.getElementById('providerSelect').value;
-	savedDefaults[provider] = document.getElementById('defaultModelSelect').value;
+	const defaultSel = document.getElementById('defaultModelSelect');
+	if (defaultSel && defaultSel.options.length > 0) {
+		const opt = defaultSel.options[defaultSel.selectedIndex];
+		if (opt && opt.text !== '...' && !opt.text.includes('Fehler') && !opt.text.includes('Error')) {
+			savedDefaults[provider] = defaultSel.value;
+		}
+	}
 }
 
 function addEmailAccountUI(acc = null, isDefault = false) {
@@ -295,14 +301,31 @@ function deleteEmailAccountFromDialog() {
 	renderEmailAccounts();
 }
 
+let currentModelFetchProvider = '';
+
 async function updateSettingsModelList() {
 	const provider = document.getElementById('providerSelect').value;
+	currentModelFetchProvider = provider;
 	const defaultSel = document.getElementById('defaultModelSelect');
 	defaultSel.innerHTML = '<option value="">...</option>';
+	
+	let apiKey = '';
+	if (provider === 'gemini') {
+		apiKey = getApiKeyValue('geminiApiKey');
+	} else if (provider === 'openai') {
+		apiKey = getApiKeyValue('openaiApiKey');
+	} else if (provider === 'mistral') {
+		apiKey = getApiKeyValue('mistralApiKey');
+	} else if (provider === 'openrouter') {
+		apiKey = getApiKeyValue('openrouterApiKey');
+	}
+	
 	try {
-		const res = await fetch('/models?provider=' + provider);
+		const res = await fetch(`/models?provider=${provider}&api_key=${encodeURIComponent(apiKey)}`);
 		if (res.redirected) { window.location.href = res.url; return; }
 		const models = await res.json();
+		
+		if (currentModelFetchProvider !== provider) return;
 		
 		if (models.length === 0) {
 			defaultSel.innerHTML = `<option value="">${t('msgNoModel')}</option>`;
@@ -318,7 +341,9 @@ async function updateSettingsModelList() {
 			}
 		}
 	} catch(e) {
-		defaultSel.innerHTML = `<option value="">${t('msgModelErr')}</option>`;
+		if (currentModelFetchProvider === provider) {
+			defaultSel.innerHTML = `<option value="">${t('msgModelErr')}</option>`;
+		}
 	}
 }
 
@@ -387,9 +412,8 @@ async function loadSettings() {
 	document.getElementById('toolEmailReadToggle').checked = data.tool_email_read_enabled !== false;
 	document.getElementById('toolYoutubeToggle').checked = data.tool_youtube_enabled !== false;
 	document.getElementById('toolAudioToggle').checked = data.tool_audio_enabled !== false;
-	document.getElementById('toolPcControlToggle').checked = data.tool_pc_control_enabled !== false;
 	const lockedAgents = data.locked_agents || {};
-	['toolDocGenToggle', 'toolEmailSendToggle', 'toolEmailReadToggle', 'toolYoutubeToggle', 'toolAudioToggle', 'toolPcControlToggle', 'webSearchToggle'].forEach(id => {
+	['toolDocGenToggle', 'toolEmailSendToggle', 'toolEmailReadToggle', 'toolYoutubeToggle', 'toolAudioToggle', 'webSearchToggle'].forEach(id => {
 		const el = document.getElementById(id);
 		if (el) el.disabled = false;
 	});
@@ -399,7 +423,6 @@ async function loadSettings() {
 		tool_email_read_enabled: 'toolEmailReadToggle',
 		tool_youtube_enabled: 'toolYoutubeToggle',
 		tool_audio_enabled: 'toolAudioToggle',
-		tool_pc_control_enabled: 'toolPcControlToggle',
 		web_search_enabled: 'webSearchToggle'
 	};
 	Object.keys(lockedAgents).forEach(key => {
@@ -413,7 +436,6 @@ async function loadSettings() {
 	document.getElementById('menu-tool-email_read').style.display = data.tool_email_read_enabled !== false ? 'block' : 'none';
 	document.getElementById('menu-tool-youtube').style.display = data.tool_youtube_enabled !== false ? 'block' : 'none';
 	document.getElementById('menu-tool-audio').style.display = data.tool_audio_enabled !== false ? 'block' : 'none';
-	document.getElementById('menu-tool-pc_control').style.display = data.tool_pc_control_enabled !== false ? 'block' : 'none';
 	document.getElementById('menu-tool-websearch').style.display = data.web_search_enabled ? 'block' : 'none';
 
 	const anyToolActive = (data.tool_doc_gen_enabled !== false) || 
@@ -421,7 +443,6 @@ async function loadSettings() {
 						  (data.tool_email_read_enabled !== false) || 
 						  (data.tool_youtube_enabled !== false) || 
 						  (data.tool_audio_enabled !== false) || 
-						  (data.tool_pc_control_enabled !== false) || 
 						  data.web_search_enabled;
 						  
 	document.getElementById('toolsMenuBtn').style.display = anyToolActive ? 'inline-block' : 'none';
@@ -470,6 +491,17 @@ async function loadSettings() {
 		adminTabBtn.style.display = data.is_admin ? 'inline-block' : 'none';
 		if (data.is_admin) loadAdminUsers();
 	}
+	
+	// Dynamische API-Key Keyup Event-Listener hinzufügen
+	['geminiApiKey', 'openrouterApiKey', 'openaiApiKey', 'mistralApiKey'].forEach(id => {
+		const el = document.getElementById(id);
+		if (el) {
+			if (!el.dataset.listenerAdded) {
+				el.addEventListener('change', updateSettingsModelList);
+				el.dataset.listenerAdded = 'true';
+			}
+		}
+	});
 }
 
 async function loadAdminUsers() {
@@ -491,7 +523,6 @@ async function loadAdminUsers() {
 			'tool_email_read_enabled': 'toolEmailReadEnable',
 			'tool_youtube_enabled': 'toolYoutubeEnable',
 			'tool_audio_enabled': 'toolAudioEnable',
-			'tool_pc_control_enabled': 'toolPcControlEnable',
 			'web_search_enabled': 'webSearchEnable'
 		};
 		
@@ -1094,7 +1125,6 @@ async function saveSettings() {
 	const toolEmailRead = document.getElementById('toolEmailReadToggle').checked;
 	const toolYoutube = document.getElementById('toolYoutubeToggle').checked;
 	const toolAudio = document.getElementById('toolAudioToggle').checked;
-	const toolPcControl = document.getElementById('toolPcControlToggle').checked;
 	
 	const showTokens = document.getElementById('showTokenCountToggle') ? document.getElementById('showTokenCountToggle').checked : true;
 	
@@ -1117,7 +1147,13 @@ async function saveSettings() {
 	const emailAccounts = emailAccountsDraft;
 	let defaultEmailIndex = defaultEmailDraftIndex;
 	
-	savedDefaults[provider] = document.getElementById('defaultModelSelect').value;
+	const defaultSel = document.getElementById('defaultModelSelect');
+	if (defaultSel && defaultSel.options.length > 0) {
+		const opt = defaultSel.options[defaultSel.selectedIndex];
+		if (opt && opt.text !== '...' && !opt.text.includes('Fehler') && !opt.text.includes('Error')) {
+			savedDefaults[provider] = defaultSel.value;
+		}
+	}
 	
 	try {
 		await fetch('/settings', {
@@ -1144,7 +1180,6 @@ async function saveSettings() {
 				tool_email_read_enabled: toolEmailRead,
 				tool_youtube_enabled: toolYoutube,
 				tool_audio_enabled: toolAudio,
-				tool_pc_control_enabled: toolPcControl,
 				show_token_count: showTokens,
 				default_model_ollama: savedDefaults.ollama,
 				default_model_gemini: savedDefaults.gemini,

@@ -85,7 +85,7 @@ try:
 	
 	from tts_system import tts_bp
 	from ai_handlers import generate_ollama, generate_gemini, generate_openai, generate_mistral, generate_openrouter, get_chat_title
-	from tools_agent import update_ytdlp, process_document_commands, process_ffmpeg_commands, process_youtube_commands, extract_email_info, parse_email_intent, process_pc_control_commands
+	from tools_agent import update_ytdlp, process_document_commands, process_ffmpeg_commands, process_youtube_commands, extract_email_info, parse_email_intent
 
 except Exception as e:
 	err_msg = traceback.format_exc()
@@ -234,68 +234,62 @@ def serve_media(filename):
 def models():
 	user_settings = apply_admin_policy(session['username'], load_settings(session['username']))
 	prov = request.args.get('provider', user_settings.get("ai_provider"))
+	api_key = request.args.get('api_key', '').strip()
+	
 	if prov == "gemini":
-		if not user_settings.get("gemini_api_key"):
+		key = api_key or user_settings.get("gemini_api_key")
+		if not key:
 			return jsonify([])
 		try:
-			url = f"https://generativelanguage.googleapis.com/v1beta/models?key={user_settings['gemini_api_key']}"
+			url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
 			r = requests.get(url)
 			r.raise_for_status()
 			data = r.json()
-			models_list = []
-			for m in data.get("models", []):
-				if "generateContent" in m.get("supportedGenerationMethods", []):
-					models_list.append(m["name"].replace("models/", ""))
+			models_list = [m["name"].split("/")[-1] for m in data.get("models", []) if "generateContent" in m.get("supportedGenerationMethods", [])]
 			return jsonify(models_list)
 		except Exception:
 			return jsonify(["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.5-flash"])
 	elif prov == "openrouter":
-		if not user_settings.get("openrouter_api_key"):
+		key = api_key or user_settings.get("openrouter_api_key")
+		if not key:
 			return jsonify([])
 		try:
 			url = "https://openrouter.ai/api/v1/models"
 			r = requests.get(url)
 			r.raise_for_status()
 			data = r.json()
-			models_list = []
-			for m in data.get("data", []):
-				if user_settings.get("openrouter_free_only"):
-					pricing = m.get("pricing", {})
-					try:
-						if float(pricing.get("prompt", 1)) > 0 or float(pricing.get("completion", 1)) > 0:
-							continue
-					except Exception:
-						continue
-				models_list.append(m["id"])
+			models_list = [m["id"] for m in data.get("data", [])]
 			return jsonify(models_list)
 		except Exception:
 			return jsonify(["openai/gpt-4o", "anthropic/claude-3.5-sonnet", "google/gemini-pro-1.5", "meta-llama/llama-3-8b-instruct"])
 	elif prov == "openai":
-		if not user_settings.get("openai_api_key"):
+		key = api_key or user_settings.get("openai_api_key")
+		if not key:
 			return jsonify([])
 		try:
 			url = "https://api.openai.com/v1/models"
-			headers = {"Authorization": f"Bearer {user_settings.get('openai_api_key', '')}"}
+			headers = {"Authorization": f"Bearer {key}"}
 			r = requests.get(url, headers=headers)
 			r.raise_for_status()
 			data = r.json()
 			models_list = [m["id"] for m in data.get("data", []) if "gpt" in m["id"] or "o1" in m["id"] or "o3" in m["id"]]
-			return jsonify(sorted(models_list))
+			return jsonify(models_list)
 		except Exception:
 			return jsonify(["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"])
 	elif prov == "mistral":
-		if not user_settings.get("mistral_api_key"):
+		key = api_key or user_settings.get("mistral_api_key")
+		if not key:
 			return jsonify([])
 		try:
 			url = "https://api.mistral.ai/v1/models"
-			headers = {"Authorization": f"Bearer {user_settings.get('mistral_api_key', '')}"}
+			headers = {"Authorization": f"Bearer {key}"}
 			r = requests.get(url, headers=headers)
 			r.raise_for_status()
 			data = r.json()
-			models_list = [m["id"] for m in data.get("data", []) if "id" in m]
-			return jsonify(sorted(models_list))
+			models_list = [m["id"] for m in data.get("data", []) if "mistral" in m["id"] or "codestral" in m["id"] or "pixtral" in m["id"]]
+			return jsonify(models_list)
 		except Exception:
-			return jsonify(["mistral-large-latest", "mistral-medium-latest", "mistral-small-latest"])
+			return jsonify(["pixtral-large-latest", "mistral-large-latest", "open-mistral-nemo"])
 	else:
 		try:
 			r = requests.get(f"{OLLAMA_URL}/api/tags")
@@ -826,26 +820,6 @@ def send_message():
 	if "doc_gen" in active_tools:
 		doc_writer_instruction = "\n\n[SYSTEM INSTRUCTION: The Document Generator Tool is active. You MUST create a downloadable document based on the user's request. Use EXACTLY this format: [SAVE_DOC]filename.ext|||Complete document content here[/SAVE_DOC]. Supported extensions: .docx, .doc, .rtf, .txt, .md, .csv. For .docx, use standard Markdown formatting (**bold**, *italic*, # Headings). DO NOT write prose outside the tag!]"
 
-	pc_control_instruction = ""
-	if "pc_control" in active_tools:
-		pc_control_instruction = (
-			"\n\n[SYSTEM INSTRUCTION: The PC Control Tool is active. You can run terminal commands or use TeamViewer-style GUI automation commands to control and interact with the user's Windows computer. "
-			"You can output multiple commands in separate `[RUN_CMD]...[/RUN_CMD]` tags, or chain them in a single tag using Windows operators (e.g., `&` or `&&`). "
-			"Available GUI automation commands: "
-			"- `screenshot`: Takes a screenshot of the user's desktop, saves it, and renders it inside the chat, allowing you to see what is on their screen. ALWAYS start with `[RUN_CMD]screenshot[/RUN_CMD]` when you need to inspect the current state of an application or locate buttons to click! "
-			"- `click <x> <y>`: Sets the mouse cursor position to pixel coordinates x, y and triggers a left mouse click. E.g. `[RUN_CMD]click 100 200[/RUN_CMD]`. "
-			"- `type <text>`: Types the specified text at the current active cursor/focus. E.g. `[RUN_CMD]type Hello World[/RUN_CMD]`. "
-			"- `press <key>`: Presses a special keyboard key (e.g., enter, tab, backspace, esc, space). E.g. `[RUN_CMD]press enter[/RUN_CMD]`, `[RUN_CMD]press tab[/RUN_CMD]`. "
-			"- `writefile <path>|||<content>`: Creates or overwrites a file at the specified absolute path on the user's computer with the exact content. You MUST separate the absolute path and the file content with exactly `|||`. E.g. `[RUN_CMD]writefile C:\\Users\\Jakob\\Documents\\test.txt|||Line 1\\nLine 2[/RUN_CMD]`. Use this command to write files robustly without any shell escaping, newlines, or coding errors! "
-			"You can also run regular terminal commands (e.g., `[RUN_CMD]start thunderbird[/RUN_CMD]`, `[RUN_CMD]calc.exe[/RUN_CMD]`, or `[RUN_CMD]explorer.exe[/RUN_CMD]`). "
-			"CRITICAL: When creating or writing files with newlines or special characters, ALWAYS use either the dedicated `doc_gen` tool if active, or the custom `writefile` command under `pc_control`. Do NOT use multiline PowerShell Here-Strings (e.g., `@' ... '@`), multiline CMD redirection, or python commands, as they suffer from shell parsing and encoding corruption. "
-			"For complex or combined tasks where command-line args aren't enough (e.g., opening an app, typing, or clicking a button): "
-			"1. Start by launching the application (e.g., `[RUN_CMD]start thunderbird[/RUN_CMD]`). "
-			"2. Call `[RUN_CMD]screenshot[/RUN_CMD]` to view the application UI. "
-			"3. Use `click` to focus a text field, `type` to fill in details, and `click` or `press` to submit. Take screenshots after each action if needed to verify! "
-			"You are allowed to write normal conversational message text outside the tags to communicate with the user, describe your plan, report progress, or ask questions!]"
-		)
-
 	gen_kwargs = {
 		"username": username,
 		"chat_id": chat_id,
@@ -859,11 +833,9 @@ def send_message():
 		"youtube_instruction": youtube_instruction,
 		"email_agent_output": email_agent_output,
 		"doc_writer_instruction": doc_writer_instruction,
-		"pc_control_instruction": pc_control_instruction,
 		"process_ffmpeg": process_ffmpeg_commands,
 		"process_yt": process_youtube_commands,
 		"process_doc": process_document_commands,
-		"process_pc_control": process_pc_control_commands,
 		"force_search": force_search,
 		"do_native_search": do_native_search
 	}

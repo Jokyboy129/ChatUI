@@ -51,7 +51,6 @@ DEFAULT_SETTINGS = {
 	"tool_email_read_enabled": True,
 	"tool_youtube_enabled": True,
 	"tool_audio_enabled": True,
-	"tool_pc_control_enabled": True,
 	"tts_enabled": False,
 	"tts_download_enabled": False,
 	"elevenlabs_music_enabled": False,
@@ -93,8 +92,7 @@ LOCKABLE_AGENT_FIELDS = [
 	"tool_email_read_enabled",
 	"tool_youtube_enabled",
 	"tool_audio_enabled",
-	"web_search_enabled",
-	"tool_pc_control_enabled"
+	"web_search_enabled"
 ]
 
 def get_secret_key():
