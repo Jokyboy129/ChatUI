@@ -21,6 +21,8 @@ try:
 except:
 	IS_GERMAN = False
 
+VERSION = "1.3"
+
 # --- 0. SINGLETON CHECK (MEHRFACHSTART VERHINDERN) ---
 mutex_name = "ChatUI_Server_Mutex_Unique_ID_998877"
 mutex = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
@@ -834,7 +836,9 @@ def send_message():
 			"- `click <x> <y>`: Sets the mouse cursor position to pixel coordinates x, y and triggers a left mouse click. E.g. `[RUN_CMD]click 100 200[/RUN_CMD]`. "
 			"- `type <text>`: Types the specified text at the current active cursor/focus. E.g. `[RUN_CMD]type Hello World[/RUN_CMD]`. "
 			"- `press <key>`: Presses a special keyboard key (e.g., enter, tab, backspace, esc, space). E.g. `[RUN_CMD]press enter[/RUN_CMD]`, `[RUN_CMD]press tab[/RUN_CMD]`. "
+			"- `writefile <path>|||<content>`: Creates or overwrites a file at the specified absolute path on the user's computer with the exact content. You MUST separate the absolute path and the file content with exactly `|||`. E.g. `[RUN_CMD]writefile C:\\Users\\Jakob\\Documents\\test.txt|||Line 1\\nLine 2[/RUN_CMD]`. Use this command to write files robustly without any shell escaping, newlines, or coding errors! "
 			"You can also run regular terminal commands (e.g., `[RUN_CMD]start thunderbird[/RUN_CMD]`, `[RUN_CMD]calc.exe[/RUN_CMD]`, or `[RUN_CMD]explorer.exe[/RUN_CMD]`). "
+			"CRITICAL: When creating or writing files with newlines or special characters, ALWAYS use either the dedicated `doc_gen` tool if active, or the custom `writefile` command under `pc_control`. Do NOT use multiline PowerShell Here-Strings (e.g., `@' ... '@`), multiline CMD redirection, or python commands, as they suffer from shell parsing and encoding corruption. "
 			"For complex or combined tasks where command-line args aren't enough (e.g., opening an app, typing, or clicking a button): "
 			"1. Start by launching the application (e.g., `[RUN_CMD]start thunderbird[/RUN_CMD]`). "
 			"2. Call `[RUN_CMD]screenshot[/RUN_CMD]` to view the application UI. "
@@ -888,6 +892,62 @@ def on_tray_quit(icon, item):
 	icon.stop()
 	os._exit(0)
 
+def parse_version(v_str):
+	nums = re.findall(r'\d+', v_str)
+	return tuple(map(int, nums))
+
+def check_for_updates():
+	time.sleep(2)
+	repo_url = "https://api.github.com/repos/Jokyboy129/ChatUI/releases/latest"
+	releases_page = "https://github.com/Jokyboy129/ChatUI/releases"
+	
+	try:
+		if IS_GERMAN:
+			print("Prüfe auf ChatUI Updates...")
+		else:
+			print("Checking for ChatUI updates...")
+			
+		headers = {"User-Agent": "ChatUI-Update-Checker"}
+		response = requests.get(repo_url, headers=headers, timeout=5)
+		if response.status_code == 200:
+			data = response.json()
+			latest_tag = data.get("tag_name", "")
+			if not latest_tag:
+				return
+				
+			latest_ver = parse_version(latest_tag)
+			curr_ver = parse_version(VERSION)
+			
+			if latest_ver > curr_ver:
+				if IS_GERMAN:
+					print(f"Update verfügbar: {latest_tag} (Aktuelle Version: {VERSION})")
+					title = "ChatUI - Update verfügbar"
+					msg = f"Eine neue Version von ChatUI ({latest_tag}) ist verfügbar!\n\nAktuelle Version: {VERSION}\n\nMöchtest du die GitHub-Releases-Seite öffnen, um das Update herunterzuladen?"
+				else:
+					print(f"Update available: {latest_tag} (Your version: {VERSION})")
+					title = "ChatUI - Update Available"
+					msg = f"A new version of ChatUI ({latest_tag}) is available!\n\nYour version: {VERSION}\n\nWould you like to open the GitHub Releases page to download the update?"
+				
+				if os.name == 'nt':
+					res = ctypes.windll.user32.MessageBoxW(0, msg, title, 0x04 | 0x20 | 0x40000)
+					if res == 6:
+						webbrowser.open(releases_page)
+			else:
+				if IS_GERMAN:
+					print(f"ChatUI ist auf dem neuesten Stand (Version: {VERSION}).")
+				else:
+					print(f"ChatUI is up to date (Version: {VERSION}).")
+		else:
+			if IS_GERMAN:
+				print(f"Update-Prüfung fehlgeschlagen: HTTP {response.status_code}")
+			else:
+				print(f"Update check failed: HTTP {response.status_code}")
+	except Exception as e:
+		if IS_GERMAN:
+			print(f"Fehler bei der Update-Prüfung: {e}")
+		else:
+			print(f"Error checking for updates: {e}")
+
 def run_system_tray():
 	menu_open = "Im Browser öffnen" if IS_GERMAN else "Open in Browser"
 	menu_quit = "Beenden" if IS_GERMAN else "Quit"
@@ -903,6 +963,8 @@ if __name__ == "__main__":
 	from waitress import serve
 	
 	update_ytdlp(IS_GERMAN)
+	
+	threading.Thread(target=check_for_updates, daemon=True).start()
 	
 	cleanup_uploads()
 	

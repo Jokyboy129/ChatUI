@@ -341,6 +341,31 @@ def process_pc_control_commands(text, de=False):
 				msg = "Fehler beim Aufnehmen des Screenshots" if de else "Error capturing screenshot"
 				result_text += f"- {msg}: {str(e)}\n"
 				
+		elif cmd_lower.startswith("writefile "):
+			# Format: writefile <path>|||<content>
+			parts = cmd[10:].split("|||", 1)
+			if len(parts) == 2:
+				path = parts[0].strip()
+				content = parts[1]
+				try:
+					if (path.startswith('"') and path.endswith('"')) or (path.startswith("'") and path.endswith("'")):
+						path = path[1:-1]
+					
+					path = os.path.expanduser(path)
+					path = os.path.expandvars(path)
+					
+					with open(path, "w", encoding="utf-8") as f:
+						f.write(content)
+					
+					msg = f"Datei erfolgreich erstellt bei: `{path}`" if de else f"File successfully created at: `{path}`"
+					result_text += f"- {msg}\n"
+				except Exception as e:
+					msg = "Fehler beim Erstellen der Datei" if de else "Error creating file"
+					result_text += f"- {msg}: {str(e)}\n"
+			else:
+				msg = "Schreibbefehl erfordert Pfad und Inhalt getrennt durch '|||'." if de else "Write command requires path and content separated by '|||'."
+				result_text += f"- {msg} (Beispiel: `writefile C:\\path\\file.txt|||Inhalt`)\n"
+				
 		elif cmd_lower.startswith("click "):
 			parts = cmd.split()
 			if len(parts) >= 3:
