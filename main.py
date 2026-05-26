@@ -932,6 +932,7 @@ def check_for_updates():
 					res = ctypes.windll.user32.MessageBoxW(0, msg, title, 0x04 | 0x20 | 0x40000)
 					if res == 6:
 						webbrowser.open(releases_page)
+						os._exit(0)
 			else:
 				if IS_GERMAN:
 					print(f"ChatUI ist auf dem neuesten Stand (Version: {VERSION}).")
