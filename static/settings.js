@@ -19,6 +19,10 @@ function switchSettingsTab(tabId) {
 	document.getElementById(tabId).classList.add('active');
 	const activeBtn = document.querySelector(`[onclick="switchSettingsTab('${tabId}')"]`);
 	if (activeBtn) activeBtn.classList.add('active');
+	
+	if (tabId === 'tab-knowledge') {
+		loadKnowledgeBases();
+	}
 }
 
 function openSettings() {
@@ -1231,4 +1235,249 @@ document.addEventListener('keydown', function(e) {
 	const idx = fields.indexOf(e.target);
 	const next = fields[idx + 1];
 	if (next) next.focus();
+});
+
+
+// --- WISSENSDATENBANK FRONTEND LOGIC ---
+
+let currentSelectedKbId = null;
+
+async function loadKnowledgeBases() {
+	try {
+		const res = await fetch('/api/knowledge-bases');
+		if (res.redirected) { window.location.href = res.url; return; }
+		const bases = await res.json();
+		renderKnowledgeBases(bases);
+	} catch (e) {
+		console.error("Error loading knowledge bases:", e);
+	}
+}
+
+function renderKnowledgeBases(kbList) {
+	const container = document.getElementById('kbListContainer');
+	if (!container) return;
+	container.innerHTML = '';
+	if (kbList.length === 0) {
+		container.innerHTML = `<div style="padding:0.5rem; color:#aaa; font-size:0.9rem;">${t('noKbPrompt') || 'Keine Datenbanken.'}</div>`;
+		document.getElementById('kbItemsWorkspace').style.display = 'none';
+		document.getElementById('kbSelectPrompt').style.display = 'flex';
+		currentSelectedKbId = null;
+		return;
+	}
+	
+	kbList.forEach(kb => {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = `btn-secondary kb-list-btn ${kb.id === currentSelectedKbId ? 'active' : ''}`;
+		btn.style.cssText = 'display:block; width:100%; text-align:left; margin:0; padding:0.5rem; font-size: 0.95rem; border-radius: 4px; transition: background 0.2s;';
+		
+		if (kb.id === currentSelectedKbId) {
+			btn.style.background = '#0d6efd';
+			btn.style.color = '#fff';
+			btn.style.fontWeight = 'bold';
+		} else {
+			btn.style.background = '#f8f9fa';
+			btn.style.color = '#212529';
+			btn.style.border = '1px solid #ced4da';
+		}
+		
+		btn.innerHTML = `<span style="font-weight:bold;">#${escapeHtml(kb.name)}</span><div style="font-size:0.75rem; opacity:0.8; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(kb.description || '')}</div>`;
+		btn.onclick = () => selectKnowledgeBase(kb.id, kb.name);
+		container.appendChild(btn);
+	});
+}
+
+async function selectKnowledgeBase(kbId, kbName) {
+	currentSelectedKbId = kbId;
+	document.getElementById('kbSelectPrompt').style.display = 'none';
+	document.getElementById('kbItemsWorkspace').style.display = 'flex';
+	document.getElementById('kbSelectedTitle').textContent = '#' + kbName;
+	
+	loadKnowledgeBases();
+	loadKnowledgeItems(kbId);
+}
+
+async function createKnowledgeBase() {
+	const nameInput = document.getElementById('kbNewName');
+	const descInput = document.getElementById('kbNewDesc');
+	const name = nameInput.value.trim();
+	const desc = descInput.value.trim();
+	if (!name) return;
+	
+	try {
+		const res = await fetch('/api/knowledge-bases', {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({name: name, description: desc})
+		});
+		if (res.redirected) { window.location.href = res.url; return; }
+		const data = await res.json();
+		if (data.error) {
+			alert(data.error);
+			return;
+		}
+		nameInput.value = '';
+		descInput.value = '';
+		currentSelectedKbId = data.id;
+		await selectKnowledgeBase(data.id, name);
+		if (typeof fetchKbTags === 'function') fetchKbTags();
+	} catch (e) {
+		console.error("Error creating knowledge base:", e);
+	}
+}
+
+async function deleteCurrentKnowledgeBase() {
+	if (!currentSelectedKbId) return;
+	if (!confirm(t('msgKbDelConfirm') || 'Möchtest du diese Wissensdatenbank wirklich löschen? Alle Einträge werden unwiderruflich gelöscht.')) return;
+	
+	try {
+		const res = await fetch(`/api/knowledge-bases/${currentSelectedKbId}`, {
+			method: 'DELETE'
+		});
+		if (res.redirected) { window.location.href = res.url; return; }
+		currentSelectedKbId = null;
+		document.getElementById('kbItemsWorkspace').style.display = 'none';
+		document.getElementById('kbSelectPrompt').style.display = 'flex';
+		loadKnowledgeBases();
+		if (typeof fetchKbTags === 'function') fetchKbTags();
+	} catch (e) {
+		console.error("Error deleting knowledge base:", e);
+	}
+}
+
+async function loadKnowledgeItems(kbId) {
+	try {
+		const res = await fetch(`/api/knowledge-bases/${kbId}/items`);
+		if (res.redirected) { window.location.href = res.url; return; }
+		const items = await res.json();
+		renderKnowledgeItems(items);
+	} catch (e) {
+		console.error("Error loading knowledge items:", e);
+	}
+}
+
+function renderKnowledgeItems(items) {
+	const container = document.getElementById('kbItemsList');
+	if (!container) return;
+	container.innerHTML = '';
+	if (items.length === 0) {
+		container.innerHTML = `<div style="text-align: center; color: #888; padding: 1rem; font-size: 0.9rem;">${t('noItemsPrompt') || 'Keine Einträge vorhanden. Füge unten einen ersten Eintrag hinzu.'}</div>`;
+		return;
+	}
+	items.forEach(item => {
+		const div = document.createElement('div');
+		div.style.cssText = 'border: 1px solid #ced4da; border-radius: 4px; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; background: #fafafa;';
+		div.innerHTML = `
+			<input type="text" value="${escapeHtml(item.title)}" class="item-edit-title" style="width:100%; font-weight:bold; border: 1px solid #ced4da; background:#fff; padding: 0.4rem; border-radius:4px; box-sizing: border-box;" placeholder="Titel"><br>
+			<textarea class="item-edit-content" style="width:100%; height:55px; border: 1px solid #ced4da; background:#fff; resize:none; padding: 0.4rem; font-size:0.9rem; border-radius:4px; box-sizing: border-box;" placeholder="Inhalt">${escapeHtml(item.content)}</textarea><br>
+			<div style="display:flex; gap:0.5rem; justify-content: flex-end;">
+				<button type="button" class="btn-primary" style="width:auto; margin:0; padding:0.3rem 0.8rem; font-size:0.85rem; background:#198754;" onclick="saveKnowledgeItem(${item.id}, this)">Speichern</button>
+				<button type="button" class="btn-secondary" style="width:auto; margin:0; padding:0.3rem 0.8rem; font-size:0.85rem; background:#dc3545;" onclick="deleteKnowledgeItem(${item.id})">Löschen</button>
+			</div>
+		`;
+		container.appendChild(div);
+	});
+}
+
+async function addKnowledgeItem() {
+	if (!currentSelectedKbId) return;
+	const titleInput = document.getElementById('kbItemNewTitle');
+	const contentInput = document.getElementById('kbItemNewContent');
+	const title = titleInput.value.trim();
+	const content = contentInput.value.trim();
+	if (!title || !content) return;
+	
+	try {
+		const res = await fetch(`/api/knowledge-bases/${currentSelectedKbId}/items`, {
+			method: 'POST',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({title: title, content: content})
+		});
+		if (res.redirected) { window.location.href = res.url; return; }
+		const data = await res.json();
+		if (data.error) {
+			alert(data.error);
+			return;
+		}
+		titleInput.value = '';
+		contentInput.value = '';
+		loadKnowledgeItems(currentSelectedKbId);
+	} catch (e) {
+		console.error("Error adding knowledge item:", e);
+	}
+}
+
+async function saveKnowledgeItem(itemId, btn) {
+	const parent = btn.closest('div').parentNode.parentNode;
+	const title = parent.querySelector('.item-edit-title').value.trim();
+	const content = parent.querySelector('.item-edit-content').value.trim();
+	if (!title || !content) return;
+	
+	btn.disabled = true;
+	const oldText = btn.textContent;
+	btn.textContent = '...';
+	
+	try {
+		const res = await fetch(`/api/knowledge-items/${itemId}`, {
+			method: 'PUT',
+			headers: {'Content-Type': 'application/json'},
+			body: JSON.stringify({title: title, content: content})
+		});
+		if (res.redirected) { window.location.href = res.url; return; }
+		const data = await res.json();
+		if (data.error) {
+			alert(data.error);
+			btn.textContent = oldText;
+			btn.disabled = false;
+			return;
+		}
+		btn.textContent = t('Saved') || 'Gespeichert';
+		setTimeout(() => {
+			btn.textContent = oldText;
+			btn.disabled = false;
+		}, 1200);
+	} catch (e) {
+		console.error("Error updating knowledge item:", e);
+		btn.textContent = oldText;
+		btn.disabled = false;
+	}
+}
+
+async function deleteKnowledgeItem(itemId) {
+	if (!confirm(t('msgItemDelConfirm') || 'Diesen Eintrag wirklich löschen?')) return;
+	
+	try {
+		const res = await fetch(`/api/knowledge-items/${itemId}`, {
+			method: 'DELETE'
+		});
+		if (res.redirected) { window.location.href = res.url; return; }
+		if (currentSelectedKbId) {
+			loadKnowledgeItems(currentSelectedKbId);
+		}
+	} catch (e) {
+		console.error("Error deleting knowledge item:", e);
+	}
+}
+
+// Arrow-Key Focus Navigation inside Knowledge Base settings panel for premium accessibility
+document.addEventListener('keydown', function(e) {
+	if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+	const active = document.activeElement;
+	if (!active) return;
+	
+	const tab = document.getElementById('tab-knowledge');
+	if (!tab || !tab.contains(active)) return;
+	
+	const focusables = Array.from(tab.querySelectorAll('input, textarea, button'));
+	const idx = focusables.indexOf(active);
+	if (idx === -1) return;
+	
+	e.preventDefault();
+	if (e.key === 'ArrowDown') {
+		const next = focusables[idx + 1];
+		if (next) next.focus();
+	} else if (e.key === 'ArrowUp') {
+		const prev = focusables[idx - 1];
+		if (prev) prev.focus();
+	}
 });

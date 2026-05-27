@@ -62,9 +62,10 @@
 			</div>
 		</div>
 
-		<form id="input-form" onsubmit="event.preventDefault(); sendMessage();">
+		<form id="input-form" onsubmit="event.preventDefault(); sendMessage();" style="position: relative;">
 			<label for="userInput" class="sr-only" data-i18n="ariaUserInput">Deine Nachricht</label>
-			<textarea id="userInput" placeholder="Nachricht eingeben..." required autofocus data-i18n-ph="placeholder"></textarea>
+			<ul id="kbAutocompleteList" role="listbox" aria-label="Tag-Vorschläge" data-i18n-aria="ariaKbAutocomplete" style="display: none;" class="kb-autocomplete-suggestions"></ul>
+			<textarea id="userInput" placeholder="Nachricht eingeben..." required autofocus data-i18n-ph="placeholder" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-haspopup="listbox" aria-controls="kbAutocompleteList" aria-activedescendant=""></textarea>
 			
 			<div class="form-actions">
 				<div class="form-actions-left">
@@ -127,6 +128,7 @@
 		<button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-agents')" data-i18n="tabAgents">Agenten</button>
 		<button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-email')" data-i18n="tabEmail">E-Mail</button>
 		<button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-tts')" data-i18n="tabTts">Sprachausgabe</button>
+		<button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-knowledge')" data-i18n="tabKnowledge">Wissensdatenbank</button>
 		<button type="button" id="adminTabBtn" class="settings-tab-btn" onclick="switchSettingsTab('tab-admin')" data-i18n="tabAdmin" style="display:none;">Admin</button>
 	</div>
 
@@ -443,6 +445,52 @@
 					<input type="checkbox" id="elevenlabsMusicToggle" style="margin:0;">
 					<span data-i18n="musicEnable">Musik-/Soundgenerierung (ElevenLabs) in Chat-Leiste anzeigen</span>
 				</label>
+			</div>
+		</div>
+
+
+		<div id="tab-knowledge" class="settings-pane">
+			<div class="kb-tab-layout" style="display: flex; gap: 1.5rem; min-height: 400px; max-height: 500px; overflow: hidden;">
+				<!-- Left Panel: Knowledge Bases List -->
+				<div class="kb-sidebar" style="flex: 1; border-right: 1px solid var(--border-color); padding-right: 1rem; display: flex; flex-direction: column; justify-content: space-between;">
+					<div>
+						<h3 style="margin-top:0; font-size: 1.1rem; color: var(--text-color);" data-i18n="kbListTitle">Wissensdatenbanken</h3>
+						<div id="kbListContainer" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem;">
+							<!-- Dynamic KB list buttons go here -->
+						</div>
+					</div>
+
+					<div style="border-top: 1px solid var(--border-color); padding-top: 1rem; background: #fff; z-index: 10;">
+						<input type="text" id="kbNewName" placeholder="Name (z.B. mydata)" data-i18n-ph="kbNewNamePh" style="width:100%; box-sizing: border-box; margin-bottom:0.5rem; padding:0.4rem; border: 1px solid #ced4da; border-radius: 4px;"><br>
+						<input type="text" id="kbNewDesc" placeholder="Beschreibung (optional)" data-i18n-ph="kbNewDescPh" style="width:100%; box-sizing: border-box; margin-bottom:0.5rem; padding:0.4rem; border: 1px solid #ced4da; border-radius: 4px;"><br>
+						<button type="button" class="btn-primary" onclick="createKnowledgeBase()" style="width:100%; padding:0.5rem; margin-bottom:0.5rem;" data-i18n="kbAddBtn">+ Datenbank erstellen</button>
+					</div>
+				</div>
+
+				<!-- Right Panel: Text Items within selected Knowledge Base -->
+				<div class="kb-content" style="flex: 2; display: flex; flex-direction: column; overflow: hidden;">
+					<div id="kbSelectPrompt" style="display: flex; flex: 1; align-items: center; justify-content: center; color: #888; text-align: center; padding: 2rem;" data-i18n="kbSelectPrompt">
+						Bitte wähle eine Wissensdatenbank aus oder erstelle eine neue.
+					</div>
+					
+					<div id="kbItemsWorkspace" style="display: none; flex-direction: column; flex: 1; overflow: hidden;">
+						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+							<h3 id="kbSelectedTitle" style="margin: 0; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">-</h3>
+							<button type="button" class="btn-secondary" onclick="deleteCurrentKnowledgeBase()" style="background:#dc3545; color:white; width:auto; margin:0; padding:0.3rem 0.6rem; font-size: 0.9rem;" data-i18n="kbDeleteBtn">Löschen</button>
+						</div>
+
+						<div id="kbItemsList" style="flex: 1; overflow-y: auto; margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; border: 1px solid #dee2e6; border-radius: 4px; padding: 0.5rem;">
+							<!-- Dynamic text items go here -->
+						</div>
+
+						<div style="border-top: 1px solid var(--border-color); padding-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+							<h4 style="margin: 0; font-size: 0.95rem;" data-i18n="kbAddItemTitle">Neuen Eintrag hinzufügen</h4>
+							<input type="text" id="kbItemNewTitle" placeholder="Titel (z.B. API Key)" data-i18n-ph="kbItemNewTitlePh" style="width:100%; padding:0.4rem; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box;"><br>
+							<textarea id="kbItemNewContent" placeholder="Inhalt..." data-i18n-ph="kbItemNewContentPh" style="width:100%; height:60px; padding:0.4rem; border: 1px solid #ced4da; border-radius: 4px; resize: none; box-sizing: border-box;"></textarea><br>
+							<button type="button" class="btn-primary" onclick="addKnowledgeItem()" style="width:100%; padding:0.5rem; margin:0;" data-i18n="itemAddBtn">+ Hinzufügen</button>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 
