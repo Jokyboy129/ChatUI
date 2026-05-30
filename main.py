@@ -258,7 +258,20 @@ def models():
 			r = requests.get(url)
 			r.raise_for_status()
 			data = r.json()
-			models_list = [m["id"] for m in data.get("data", [])]
+			models_list = []
+			free_only = user_settings.get("openrouter_free_only", False)
+			for m in data.get("data", []):
+				if free_only:
+					pricing = m.get("pricing", {})
+					try:
+						p_prompt = float(pricing.get("prompt", "0"))
+						p_completion = float(pricing.get("completion", "0"))
+					except ValueError:
+						p_prompt = 1.0
+						p_completion = 1.0
+					if p_prompt > 0 or p_completion > 0:
+						continue
+				models_list.append(m["id"])
 			return jsonify(models_list)
 		except Exception:
 			return jsonify(["openai/gpt-4o", "anthropic/claude-3.5-sonnet", "google/gemini-pro-1.5", "meta-llama/llama-3-8b-instruct"])
