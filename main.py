@@ -607,7 +607,7 @@ def send_message():
 			if f and f.filename:
 				filename = secure_filename(f.filename.lower())
 				if not filename:
-					continue
+					filename = "unnamed_upload"
 				try:
 					content_bytes = f.read()
 					file_path = os.path.join(UPLOADS_DIR, filename)
