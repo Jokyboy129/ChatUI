@@ -175,9 +175,20 @@ def process_ffmpeg_commands(text, de=False):
 				else:
 					continue
 			
-			args = [a for a in args if a != "-y"]
-			full_cmd = [ffmpeg_path, "-y"] + args
-			output_file = args[-1]
+			safe_args = []
+			for a in args:
+				if a == "-y":
+					continue
+				if "/" in a or "\\" in a or ".." in a:
+					raise ValueError(f"Unsafe path detected: {a}")
+				if "://" in a:
+					raise ValueError(f"URL schemes not allowed: {a}")
+				if a == "concat":
+					raise ValueError("Concat demuxer is not allowed for security reasons.")
+				safe_args.append(a)
+			
+			full_cmd = [ffmpeg_path, "-y"] + safe_args
+			output_file = safe_args[-1]
 			
 			creationflags = 0x08000000 if os.name == 'nt' else 0
 			subprocess.run(full_cmd, cwd=UPLOADS_DIR, check=True, capture_output=True, creationflags=creationflags)

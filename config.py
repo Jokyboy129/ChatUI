@@ -3,6 +3,7 @@ import sys
 import json
 import hashlib
 import secrets
+from werkzeug.security import generate_password_hash, check_password_hash
 
 if getattr(sys, 'frozen', False):
 	APP_DIR = sys._MEIPASS
@@ -216,7 +217,13 @@ def public_settings_for_user(username):
 	return settings
 
 def hash_password(password):
-	return hashlib.sha256(password.encode('utf-8')).hexdigest()
+	return generate_password_hash(password)
+
+def verify_password(password, stored_hash):
+	if stored_hash.startswith("pbkdf2:") or stored_hash.startswith("scrypt:"):
+		return check_password_hash(stored_hash, password)
+	legacy_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
+	return stored_hash == legacy_hash
 
 def get_user_dir(username):
 	user_dir = os.path.join(USERS_DIR, username)

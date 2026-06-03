@@ -70,6 +70,7 @@ try:
 	import requests
 	import sqlite3
 	from flask import Flask, request, Response, jsonify, render_template, send_from_directory, session, redirect, url_for
+	from werkzeug.utils import secure_filename
 	import fitz
 	from PIL import Image, ImageDraw
 	import pystray
@@ -78,7 +79,7 @@ try:
 	if os.name == 'nt':
 		import pystray._win32
 		
-	from config import load_settings, save_settings, public_settings_for_user, apply_admin_policy, load_admin_policy, save_admin_policy, is_admin, API_KEY_FIELDS, LOCKABLE_AGENT_FIELDS, get_db_path, APP_DIR, DATA_DIR, PIPER_DIR, OLLAMA_URL, PORT, UPLOADS_DIR, load_users, save_users, hash_password, get_secret_key
+	from config import load_settings, save_settings, public_settings_for_user, apply_admin_policy, load_admin_policy, save_admin_policy, is_admin, API_KEY_FIELDS, LOCKABLE_AGENT_FIELDS, get_db_path, APP_DIR, DATA_DIR, PIPER_DIR, OLLAMA_URL, PORT, UPLOADS_DIR, load_users, save_users, hash_password, verify_password, get_secret_key
 	from database import init_db, get_chat_history, save_message_to_db, generate_chat_title, save_doc_chunk, search_doc_chunks
 	from web_search import get_search_query, perform_web_search
 	import email_agent
@@ -157,7 +158,10 @@ def login():
 		password = request.form.get("password", "")
 		if username and password:
 			users = load_users()
-			if username in users and users[username] == hash_password(password):
+			if username in users and verify_password(password, users[username]):
+				if not users[username].startswith("pbkdf2:") and not users[username].startswith("scrypt:"):
+					users[username] = hash_password(password)
+					save_users(users)
 				session.permanent = True
 				session['username'] = username
 				init_db(username)
@@ -177,7 +181,7 @@ def register():
 		password = request.form.get("password", "")
 		
 		if username and password:
-			username = "".join([c for c in username if c.isalnum() or c in " ._-"])
+			username = secure_filename(username)
 			if not username:
 				err = "Ungültiger Benutzername." if lang_de else "Invalid username."
 				return render_template('register.html', error=err)
@@ -601,10 +605,12 @@ def send_message():
 		if "file" in request.files:
 			f = request.files["file"]
 			if f and f.filename:
-				filename = f.filename.lower()
+				filename = secure_filename(f.filename.lower())
+				if not filename:
+					continue
 				try:
 					content_bytes = f.read()
-					file_path = os.path.join(UPLOADS_DIR, f.filename)
+					file_path = os.path.join(UPLOADS_DIR, filename)
 					with open(file_path, "wb") as out_f:
 						out_f.write(content_bytes)
 					
