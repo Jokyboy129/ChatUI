@@ -21,7 +21,7 @@ try:
 except:
 	IS_GERMAN = False
 
-VERSION = "1.3"
+VERSION = "1.3.1"
 
 # --- 0. SINGLETON CHECK (MEHRFACHSTART VERHINDERN) ---
 mutex_name = "ChatUI_Server_Mutex_Unique_ID_998877"
