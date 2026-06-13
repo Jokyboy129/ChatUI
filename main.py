@@ -828,8 +828,8 @@ def send_message():
 				latest_audio_file = matches[-1]
 				
 		if latest_audio_file:
-			base_name = os.path.splitext(latest_audio_file)[0]
-			audio_instruction = f"\n\n[SYSTEM INSTRUCTION: The Audio/FFmpeg tool is active. The most recent audio file is '{latest_audio_file}'. Modify the audio EXACTLY as the user requests. You MUST output your command exactly in this format: [EXECUTE_FFMPEG]-i \"{latest_audio_file}\" <args> \"{base_name}_mod.<new_extension>\"[/EXECUTE_FFMPEG]. Supported FFmpeg operations: format conversion, trimming (e.g. -ss 00:00:10 -t 5), retuning (e.g. 440Hz to 432Hz use -af \"asetrate=44100*432/440,aresample=44100\"). IMPORTANT: For audio-only files (.mp3, .m4a etc.) NEVER use video mappings like '-map 0:v:0' as they have no video stream! WARNING: The closing tag [/EXECUTE_FFMPEG] MUST NEVER BE MISSING!]"
+			base_name, ext = os.path.splitext(latest_audio_file)
+			audio_instruction = f"\n\n[SYSTEM INSTRUCTION: The Audio/FFmpeg tool is active. The most recent audio file is '{latest_audio_file}'. Modify the audio EXACTLY as the user requests. You MUST output your command exactly in this format: [EXECUTE_FFMPEG]-i \"{latest_audio_file}\" <args> \"{base_name}_mod{ext}\"[/EXECUTE_FFMPEG] (keep the original extension {ext} unless a format conversion is requested). Supported FFmpeg operations: format conversion, trimming (e.g. -ss 00:00:10 -t 5), retuning with tempo preservation (e.g. 440Hz to 432Hz use -af \"asetrate=44100*432/440,aresample=44100,atempo=440/432\"). IMPORTANT: For audio-only files (.mp3, .m4a etc.) NEVER use video mappings like '-map 0:v:0' as they have no video stream! WARNING: The closing tag [/EXECUTE_FFMPEG] MUST NEVER BE MISSING!]"
 
 	youtube_instruction = ""
 	if "youtube" in active_tools:

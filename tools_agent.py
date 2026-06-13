@@ -179,8 +179,14 @@ def process_ffmpeg_commands(text, de=False):
 			for a in args:
 				if a == "-y":
 					continue
-				if "/" in a or "\\" in a or ".." in a:
+				if "\\" in a or ".." in a:
 					raise ValueError(f"Unsafe path detected: {a}")
+				if "/" in a:
+					# Allow mathematical fractions like 440/432 or 44100*432/440
+					# by removing all digit/digit matches and seeing if any slash is left
+					temp = re.sub(r'\d+/\d+', '', a)
+					if "/" in temp:
+						raise ValueError(f"Unsafe path detected: {a}")
 				if "://" in a:
 					raise ValueError(f"URL schemes not allowed: {a}")
 				if a == "concat":
