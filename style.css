@@ -42,7 +42,8 @@ body {
   border-radius: 50%;
   filter: blur(120px);
   opacity: 0.6;
-  animation: float 20s infinite ease-in-out alternate;
+  animation: orb-float 20s infinite ease-in-out alternate;
+  will-change: transform;
 }
 
 .orb-1 {
@@ -74,7 +75,7 @@ body {
   animation-delay: -10s;
 }
 
-@keyframes float {
+@keyframes orb-float {
   0% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(30vw, 20vh) scale(1.3); }
   100% { transform: translate(-20vw, -25vh) scale(0.8); }
