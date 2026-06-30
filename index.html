@@ -3,58 +3,76 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ChatUI</title>
+  <title>ChatUI - Accessible AI Chat</title>
+  
+  <meta name="description" content="ChatUI is a simple, accessible open-source AI chat interface for local and cloud models.">
+  <meta name="keywords" content="ChatUI, AI, accessible chat, screen reader, OpenAI, Ollama, OpenRouter, Gemini, Mistral, TTS">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="asmr-background" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
 
-  <h1>ChatUI</h1>
+  <main>
+    <section class="hero">
+      <h1>ChatUI</h1>
+      <p>
+        ChatUI is a simple open-source AI chat interface for local and cloud models.
+      </p>
+    </section>
 
-  <p>
-    ChatUI is a simple open-source AI chat interface for local and cloud models.
-  </p>
+    <section class="projects-grid">
+      <article class="project-card">
+        <h2>Supported AI Providers</h2>
+        <ul>
+          <li>OpenAI</li>
+          <li>Ollama</li>
+          <li>OpenRouter</li>
+          <li>Gemini</li>
+          <li>Mistral</li>
+        </ul>
+      </article>
 
-  <h2>Supported AI Providers</h2>
-  <ul>
-    <li>OpenAI</li>
-    <li>Ollama</li>
-    <li>OpenRouter</li>
-    <li>Gemini</li>
-    <li>Mistral</li>
-  </ul>
+      <article class="project-card">
+        <h2>Features</h2>
+        <ul>
+          <li>FFmpeg Audio Agent for converting audio</li>
+          <li>TTS system to read responses aloud using multiple TTS providers (Piper, ElevenLabs, SAPI5)</li>
+          <li>Email Agent for sending and reading emails</li>
+          <li>Document Agent for creating documents when enabled (docx, doc, rtf, txt, md, csv)</li>
+          <li>Web Search via SearXNG for real-time web search capabilities</li>
+        </ul>
+      </article>
 
-  <h2>Features</h2>
-  <ul>
-    <li>FFmpeg Audio Agent for converting audio</li>
-    <li>TTS system to read responses aloud using multiple TTS providers (Piper, ElevenLabs, SAPI5)</li>
-    <li>Email Agent for sending and reading emails</li>
-    <li>Document Agent for creating documents when enabled (docx, doc, rtf, txt, md, csv)</li>
-    <li>Web Search via SearXNG for real-time web search capabilities</li>
-  </ul>
+      <article class="project-card">
+        <h2>Details</h2>
+        <p><strong>Language Support:</strong> The app supports both German and English.</p>
+        <p><strong>Hosting:</strong> The server runs locally and is hosted on the local network on port 5000.</p>
+        <p><strong>User System:</strong> Each user has their own isolated workspace.</p>
+        <p><strong>Knowledge Base:</strong> Users can create their own custom knowledge bases to save information. Knowledge bases are strictly personal and stored in each user's isolated local database, ensuring privacy.</p>
+      </article>
 
-  <h2>Language Support</h2>
-  <p>
-    The app supports both German and English.
-  </p>
+      <article class="project-card">
+        <h2>Download</h2>
+        <p>Get the latest release of ChatUI.</p>
+        <a href="https://github.com/jokyboy129/ChatUI/releases">Download ChatUI releases</a>
+      </article>
+    </section>
+  </main>
 
-  <h2>Hosting</h2>
-  <p>
-    The server runs locally and is hosted on the local network on port 5000.
-  </p>
-
-  <h2>User System</h2>
-  <p>
-    Each user has their own isolated workspace.
-  </p>
-
-  <h2>Knowledge Base</h2>
-  <p>
-    Users can create their own custom knowledge bases to save information. Knowledge bases are strictly personal and stored in each user's isolated local database, ensuring privacy.
-  </p>
-
-  <h2>Download</h2>
-  <p>
-    <a href="https://github.com/jokyboy129/ChatUI/releases">Download ChatUI releases</a>
-  </p>
-
+  <footer class="site-footer">
+    <p>Created by Jokyboy129</p>
+    <div class="footer-links">
+      <a href="https://github.com/Jokyboy129" target="_blank" rel="noopener noreferrer">GitHub Profile</a>
+      <a href="mailto:strasserjakob@icloud.com">strasserjakob@icloud.com</a>
+    </div>
+  </footer>
 </body>
 </html>
