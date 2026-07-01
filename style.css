@@ -34,7 +34,15 @@ body {
   height: 100vh;
   z-index: -1;
   overflow: hidden;
-  background: var(--bg-color);
+  background: linear-gradient(45deg, #0b0f19, #1e3a8a, #4c1d95, #0b0f19);
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .orb {
